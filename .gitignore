@@ -35,3 +35,7 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Google Drive Secrets ###
+/src/main/resources/google/credentials.json
+/tokens/*
