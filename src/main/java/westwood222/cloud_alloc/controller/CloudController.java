@@ -3,6 +3,7 @@ package westwood222.cloud_alloc.controller;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,7 +25,7 @@ public class CloudController {
     private final GoogleService service;
 
     @GetMapping
-    List<String> all(
+    ResponseEntity<SearchResponse> all(
             @RequestParam(value = "page", required = false) String page,
             @RequestParam(value = "size", defaultValue = "20") Integer size,
             @RequestParam Map<String, String> other     // included page and size (stupid spring)
@@ -34,16 +35,14 @@ public class CloudController {
         other.remove("size");
 
         SearchRequest request = SearchRequest.builder().page(page).size(size).conditions(other).build();
-        List<String> result;
+        SearchResponse response;
         try {
-            SearchResponse response = service.search(request);
-            result = new ArrayList<>(response.getIds().size());
-            result.addAll(response.getIds());
+            response = service.search(request);
         } catch (IOException e) {
             log.error("Unable to search {}", e.toString());
             return null;
         }
-        return result;
+        return ResponseEntity.ok(response);
     }
 
     @GetMapping("{fileId}")

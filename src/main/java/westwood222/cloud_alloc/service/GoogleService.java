@@ -106,7 +106,7 @@ public class GoogleService implements CloudService {
 
         ArrayList<String> files = new ArrayList<>(result.size());
         result.getFiles().forEach(file -> files.add(file.getId()));
-        return SearchResponse.builder().ids(files).build();
+        return SearchResponse.builder().ids(files).nextPageToken(result.getNextPageToken()).build();
     }
 
     public String get(String fileId) throws IOException {
