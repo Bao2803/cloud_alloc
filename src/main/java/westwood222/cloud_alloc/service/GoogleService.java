@@ -11,8 +11,8 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.drive.model.File;
 import com.google.api.services.drive.model.FileList;
-import org.springframework.stereotype.Repository;
 import org.springframework.stereotype.Service;
 import westwood222.cloud_alloc.dto.*;
 
@@ -107,6 +107,14 @@ public class GoogleService implements CloudService {
         ArrayList<String> files = new ArrayList<>(result.size());
         result.getFiles().forEach(file -> files.add(file.getId()));
         return SearchResponse.builder().ids(files).build();
+    }
+
+    public String get(String fileId) throws IOException {
+        File result = service.files()
+                .get(fileId)
+                .setFields("webViewLink")
+                .execute();
+        return result.getWebViewLink();
     }
 
     @Override

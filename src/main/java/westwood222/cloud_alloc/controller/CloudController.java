@@ -4,8 +4,10 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.view.RedirectView;
 import westwood222.cloud_alloc.dto.SearchRequest;
 import westwood222.cloud_alloc.dto.SearchResponse;
 import westwood222.cloud_alloc.service.GoogleService;
@@ -42,5 +44,16 @@ public class CloudController {
             return null;
         }
         return result;
+    }
+
+    @GetMapping("{fileId}")
+    RedirectView one(@PathVariable("fileId") String fileId) {
+        try {
+            String viewLink = service.get(fileId);
+            return new RedirectView(viewLink);
+        } catch (IOException e) {
+            log.error("Unable to get file {}: {}", fileId, e.toString());
+            return null;
+        }
     }
 }
