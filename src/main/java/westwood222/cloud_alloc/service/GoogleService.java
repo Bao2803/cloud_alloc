@@ -6,7 +6,10 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.googleapis.media.MediaHttpUploader;
+import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
+import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.json.gson.GsonFactory;
 import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
@@ -16,16 +19,13 @@ import com.google.api.services.drive.model.FileList;
 import org.springframework.stereotype.Service;
 import westwood222.cloud_alloc.dto.*;
 
-import java.io.FileNotFoundException;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
+import java.io.*;
 import java.security.GeneralSecurityException;
 import java.util.*;
 
 @Service
 public class GoogleService implements CloudService {
-    /* Configuration */ // TODO: 1)Need to create new Repo for each account 2)Somehow config in another class?
+    /* Configuration */ // TODO: 1)Need to upload new Repo for each account 2)Somehow config in another class?
     private static final String APPLICATION_NAME = "cloud_alloc";
     private static final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE);
     private static final HttpTransport HTTP_TRANSPORT;
@@ -69,8 +69,16 @@ public class GoogleService implements CloudService {
     }
 
     @Override
-    public CreateResponse create(CreateRequest request) {
-        return null;
+    public UploadResponse upload(UploadRequest request) throws IOException {
+        try (InputStream inputFile = GoogleService.class.getResourceAsStream(request.getFilePath())) {
+            if (inputFile == null) {
+                return null;
+            }
+
+            InputStreamContent mediaContent = new InputStreamContent(request.getFileType(), inputFile);
+            File result = service.files().create(new File().setName(request.getFileName()), mediaContent).execute();
+            return UploadResponse.builder().id(result.getId()).build();
+        }
     }
 
     private String parseQuery(Map<String, String> conditions) {
