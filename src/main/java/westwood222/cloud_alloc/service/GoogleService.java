@@ -6,8 +6,6 @@ import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.googleapis.media.MediaHttpUploader;
-import com.google.api.client.http.HttpResponse;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.http.InputStreamContent;
 import com.google.api.client.json.gson.GsonFactory;
@@ -96,7 +94,7 @@ public class GoogleService implements CloudService {
                 break;
             }
         }
-
+        System.out.println(query);
         return query.toString();
     }
 
@@ -131,7 +129,13 @@ public class GoogleService implements CloudService {
     }
 
     @Override
-    public DeleteResponse delete(DeleteRequest request) {
-        return null;
+    public void delete(DeleteRequest request) throws IOException {
+        if (request.isHardDelete()) {
+            service.files().delete(request.getId()).execute();
+        } else {
+            File temp = new File();
+            temp.setTrashed(true);
+            service.files().update(request.getId(), temp).execute();
+        }
     }
 }
