@@ -1,4 +1,4 @@
-package westwood222.cloud_alloc.dto;
+package westwood222.cloud_alloc.dto.upload;
 
 import lombok.Builder;
 import lombok.Data;
