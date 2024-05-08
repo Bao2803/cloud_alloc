@@ -74,11 +74,7 @@ public class GoogleService implements CloudService {
 
     @Override
     public UploadResponse upload(UploadRequest request) throws IOException {
-        try (InputStream inputFile = GoogleService.class.getResourceAsStream(request.getFilePath())) {
-            if (inputFile == null) {
-                return null;
-            }
-
+        try (InputStream inputFile = new BufferedInputStream(new FileInputStream(request.getFilePath()))) {
             InputStreamContent mediaContent = new InputStreamContent(request.getFileType(), inputFile);
             File result = service.files().create(new File().setName(request.getFileName()), mediaContent).execute();
             return UploadResponse.builder().id(result.getId()).build();
