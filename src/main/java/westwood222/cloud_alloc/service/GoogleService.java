@@ -18,10 +18,10 @@ import org.springframework.stereotype.Service;
 import westwood222.cloud_alloc.dto.delete.DeleteRequest;
 import westwood222.cloud_alloc.dto.search.SearchRequest;
 import westwood222.cloud_alloc.dto.search.SearchResponse;
-import westwood222.cloud_alloc.dto.update.UpdateRequest;
-import westwood222.cloud_alloc.dto.update.UpdateResponse;
 import westwood222.cloud_alloc.dto.upload.UploadRequest;
 import westwood222.cloud_alloc.dto.upload.UploadResponse;
+import westwood222.cloud_alloc.dto.view.ViewRequest;
+import westwood222.cloud_alloc.dto.view.ViewResponse;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
@@ -73,6 +73,11 @@ public class GoogleService implements CloudService {
     }
 
     @Override
+    public int freeSpace() {
+        throw new RuntimeException("not implemented");
+    }
+
+    @Override
     public UploadResponse upload(UploadRequest request) throws IOException {
         try (InputStream inputFile = new BufferedInputStream(new FileInputStream(request.getFilePath()))) {
             InputStreamContent mediaContent = new InputStreamContent(request.getFileType(), inputFile);
@@ -117,17 +122,13 @@ public class GoogleService implements CloudService {
         return SearchResponse.builder().ids(files).nextPageToken(result.getNextPageToken()).build();
     }
 
-    public String get(String fileId) throws IOException {
+    @Override
+    public ViewResponse view(ViewRequest request) throws IOException {
         File result = service.files()
-                .get(fileId)
+                .get(request.getFileId())
                 .setFields("webViewLink")
                 .execute();
-        return result.getWebViewLink();
-    }
-
-    @Override
-    public UpdateResponse update(UpdateRequest request) {
-        return null;
+        return ViewResponse.builder().viewLink(result.getWebViewLink()).build();
     }
 
     @Override
