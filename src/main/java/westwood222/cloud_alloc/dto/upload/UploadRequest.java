@@ -6,7 +6,7 @@ import lombok.RequiredArgsConstructor;
 @Getter
 @RequiredArgsConstructor
 public class UploadRequest {
-    String fileType;
-    String filePath;
-    String fileName;
+    private String fileType;
+    private String filePath;
+    private String fileName;
 }

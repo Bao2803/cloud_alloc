@@ -8,7 +8,7 @@ import java.util.Map;
 @Data
 @Builder
 public class SearchRequest {
-    int size;
-    String page;
-    Map<String, String> conditions;
+    private int size;
+    private String page;
+    private Map<String, String> conditions;
 }
