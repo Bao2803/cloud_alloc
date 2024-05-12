@@ -1,41 +1,41 @@
-package westwood222.cloud_alloc.service.manager;
+package westwood222.cloud_alloc.service.account;
 
+import lombok.NonNull;
 import org.springframework.stereotype.Service;
-import westwood222.cloud_alloc.service.storage.CloudStorageService;
+import westwood222.cloud_alloc.model.Account;
+import westwood222.cloud_alloc.service.storage.StorageService;
 
-import java.util.Comparator;
-import java.util.PriorityQueue;
+import java.util.*;
 
 @Service
-public class ManagerServiceImpl implements ManagerService {
+public class AccountServiceImpl implements AccountService {
     private static final int MINIMUM_SPACE = 1024;
-    private static final ManagerServiceImpl INSTANCE = new ManagerServiceImpl();
-    private final PriorityQueue<CloudStorageService> servicePriorityQueue = new PriorityQueue<>(
-            Comparator.comparingInt(CloudStorageService::freeSpace)
+
+    private final PriorityQueue<StorageService> servicePriorityQueue = new PriorityQueue<>(
+            Comparator.comparingInt(StorageService::freeSpace)
     );
 
-    public static ManagerServiceImpl getInstance() {
-        return INSTANCE;
-    }
-
     @Override
-    public CloudStorageService getMaxSpace() {
-        CloudStorageService service = servicePriorityQueue.peek();
+    public @NonNull StorageService getMaxSpace() {
+        StorageService service = servicePriorityQueue.peek();
         if (service == null || service.freeSpace() <= MINIMUM_SPACE) {
             // TODO: request more space
             throw new RuntimeException("not implemented requesting extra memory");
         }
-        return servicePriorityQueue.poll();
+        return Objects.requireNonNull(servicePriorityQueue.poll());
     }
 
     @Override
-    public CloudStorageService getContainer(String fileId) {
-        return null;
+    public boolean add(Account account) throws ClassCastException, NullPointerException {
+        return false;
     }
 
     @Override
-    public boolean add(CloudStorageService service) {
+    public boolean add(StorageService service) {
         return servicePriorityQueue.add(service);
     }
 
+    public Optional<StorageService> findOneById(UUID id) {
+        return Optional.empty();
+    }
 }

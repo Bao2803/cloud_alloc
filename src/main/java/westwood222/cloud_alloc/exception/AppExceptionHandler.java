@@ -14,10 +14,10 @@ import java.util.Map;
 public class AppExceptionHandler extends ResponseEntityExceptionHandler {
     private static final String ERROR_CODE_INTERNAL = "INTERNAL_ERROR";
     private static final Map<Class<? extends RuntimeException>, HttpStatus> EXCEPTION_TO_HTTP_STATUS_CODE = Map.of(
-
+        ResourceNotFound.class, HttpStatus.NOT_FOUND
     );
     private static final Map<Class<? extends RuntimeException>, String> EXCEPTION_TO_ERROR_CODE = Map.of(
-
+        ResourceNotFound.class, "Not found"
     );
 
     @ExceptionHandler({GoogleJsonResponseException.class})

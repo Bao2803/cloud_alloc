@@ -1,4 +1,4 @@
-package westwood222.cloud_alloc.service;
+package westwood222.cloud_alloc.service.storage;
 
 import com.google.api.client.auth.oauth2.Credential;
 import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
@@ -13,11 +13,8 @@ import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.DriveScopes;
 import com.google.api.services.drive.model.File;
-import com.google.api.services.drive.model.FileList;
 import org.springframework.stereotype.Service;
 import westwood222.cloud_alloc.dto.delete.DeleteRequest;
-import westwood222.cloud_alloc.dto.search.SearchRequest;
-import westwood222.cloud_alloc.dto.search.SearchResponse;
 import westwood222.cloud_alloc.dto.upload.UploadRequest;
 import westwood222.cloud_alloc.dto.upload.UploadResponse;
 import westwood222.cloud_alloc.dto.view.ViewRequest;
@@ -25,10 +22,11 @@ import westwood222.cloud_alloc.dto.view.ViewResponse;
 
 import java.io.*;
 import java.security.GeneralSecurityException;
-import java.util.*;
+import java.util.Collections;
+import java.util.List;
 
 @Service
-public class GoogleService implements CloudService {
+public class GoogleStorageService implements StorageService {
     /* Configuration */ // TODO: 1)Need to upload new Repo for each account 2)Somehow config in another class?
     private static final String APPLICATION_NAME = "cloud_alloc";
     private static final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE);
@@ -47,7 +45,7 @@ public class GoogleService implements CloudService {
 
     private final Drive service;
 
-    public GoogleService() throws IOException {
+    public GoogleStorageService() throws IOException {
         this.service = new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredential())
                 .setApplicationName(APPLICATION_NAME)
                 .build();
@@ -55,7 +53,7 @@ public class GoogleService implements CloudService {
     /* Configuration */
 
     private static Credential getCredential() throws IOException {
-        InputStream in = GoogleService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
+        InputStream in = GoogleStorageService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }
@@ -79,66 +77,32 @@ public class GoogleService implements CloudService {
 
     @Override
     public UploadResponse upload(UploadRequest request) throws IOException {
-        try (InputStream inputFile = new BufferedInputStream(new FileInputStream(request.getFilePath()))) {
-            InputStreamContent mediaContent = new InputStreamContent(request.getFileType(), inputFile);
-            File result = service.files().create(new File().setName(request.getFileName()), mediaContent).execute();
-            return UploadResponse.builder().id(result.getId()).build();
+        try (InputStream inputFile = new BufferedInputStream(new FileInputStream(request.getResourcePath()))) {
+            InputStreamContent mediaContent = new InputStreamContent(request.getResourceProperty().getName(), inputFile);
+            File result = service.files()
+                    .create(new File().setName(request.getResourceProperty().getName()), mediaContent)
+                    .execute();
+            return UploadResponse.builder().resourceId(result.getId()).build();
         }
-    }
-
-    private String parseQuery(Map<String, String> conditions) {
-        final StringBuilder query = new StringBuilder();
-        Iterator<String> test = conditions.keySet().iterator();
-        while (test.hasNext()) {
-            String temp = test.next();
-            query.append(temp)
-                    .append(" ")
-                    .append(conditions.get(temp));
-
-            if (test.hasNext()) {
-                query.append(" and ");
-            } else {
-                break;
-            }
-        }
-        System.out.println(query);
-        return query.toString();
-    }
-
-    @Override
-    public SearchResponse search(SearchRequest request) throws IOException {
-        final String page = request.getPage();
-        final int size = request.getSize();
-        final String query = parseQuery(request.getConditions());
-        FileList result = service.files().list()
-                .setQ(query)
-                .setPageSize(size)
-                .setPageToken(page)
-                .setFields("nextPageToken, files(id)")
-                .execute();
-
-        ArrayList<String> files = new ArrayList<>(result.size());
-        result.getFiles().forEach(file -> files.add(file.getId()));
-        return SearchResponse.builder().ids(files).nextPageToken(result.getNextPageToken()).build();
     }
 
     @Override
     public ViewResponse view(ViewRequest request) throws IOException {
         File result = service.files()
-                .get(request.getFileId())
+                .get(request.getResourceId())
                 .setFields("webViewLink")
                 .execute();
-        return ViewResponse.builder().viewLink(result.getWebViewLink()).build();
+        return ViewResponse.builder().resourceViewLink(result.getWebViewLink()).build();
     }
 
     @Override
     public void delete(DeleteRequest request) throws IOException {
         if (request.isHardDelete()) {
-            service.files().delete(request.getId()).execute();
+            service.files().delete(request.getResourceId()).execute();
         } else {
             File temp = new File();
             temp.setTrashed(true);
-            service.files().update(request.getId(), temp).execute();
+            service.files().update(request.getResourceId(), temp).execute();
         }
     }
 }
