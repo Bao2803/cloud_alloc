@@ -6,6 +6,6 @@ import lombok.Data;
 @Data
 @Builder
 public class DeleteRequest {
-    private String id;
+    private String resourceId;
     private boolean isHardDelete;
 }

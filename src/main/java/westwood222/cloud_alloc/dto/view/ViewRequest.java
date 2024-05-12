@@ -6,5 +6,5 @@ import lombok.Data;
 @Data
 @Builder
 public class ViewRequest {
-    private String fileId;
+    private String resourceId;
 }

@@ -2,13 +2,12 @@ package westwood222.cloud_alloc.dto.search;
 
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.Map;
+import westwood222.cloud_alloc.model.ResourceProperty;
 
 @Data
 @Builder
 public class SearchRequest {
     private int size;
-    private String page;
-    private Map<String, String> conditions;
+    private int page;
+    private ResourceProperty resourceProperty;
 }

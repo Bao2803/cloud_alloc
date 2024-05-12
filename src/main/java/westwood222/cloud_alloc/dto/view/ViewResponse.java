@@ -6,5 +6,5 @@ import lombok.Data;
 @Data
 @Builder
 public class ViewResponse {
-    private String viewLink;
+    private String resourceViewLink;
 }
