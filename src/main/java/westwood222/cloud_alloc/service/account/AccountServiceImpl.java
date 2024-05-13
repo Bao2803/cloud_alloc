@@ -1,32 +1,47 @@
 package westwood222.cloud_alloc.service.account;
 
 import lombok.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.service.storage.StorageService;
 
 import java.util.*;
 
 @Service
 public class AccountServiceImpl implements AccountService {
-    private static final int MINIMUM_SPACE = 1024;
+    private final long MINIMUM_SPACE;   // in bytes
+    private final Map<UUID, StorageService> serviceMap;
+    private final PriorityQueue<StorageService> servicePriorityQueue;
 
-    private final PriorityQueue<StorageService> servicePriorityQueue = new PriorityQueue<>(
-            Comparator.comparingInt(StorageService::freeSpace)
-    );
+    public AccountServiceImpl(
+            Map<UUID, StorageService> serviceMap,
+            PriorityQueue<StorageService> servicePriorityQueue,
+            @Value("${service.account.min.size.default}") int minSpace
+    ) {
+        this.serviceMap = serviceMap;
+        this.MINIMUM_SPACE = minSpace;
+        this.servicePriorityQueue = servicePriorityQueue;
+    }
 
     @Override
-    public @NonNull StorageService getMaxSpace() {
+    public @NonNull StorageService getMaxSpace(long spaceNeed) {
+        spaceNeed = spaceNeed <= 0 ? MINIMUM_SPACE : spaceNeed;
+
         StorageService service = servicePriorityQueue.peek();
-        if (service == null || service.freeSpace() <= MINIMUM_SPACE) {
-            // TODO: request more space
-            throw new RuntimeException("not implemented requesting extra memory");
+        try {
+            if (service == null || service.freeSpace() <= spaceNeed) {
+                if (!newAccount()) {
+                    throw new RuntimeException("Out of memory but cannot request more account\n");
+                }
+            }
+        } catch (Exception e) {
+            throw new RuntimeException(e);
         }
         return Objects.requireNonNull(servicePriorityQueue.poll());
     }
 
     @Override
-    public boolean add(Account account) throws ClassCastException, NullPointerException {
+    public boolean newAccount() {
         return false;
     }
 
@@ -35,7 +50,8 @@ public class AccountServiceImpl implements AccountService {
         return servicePriorityQueue.add(service);
     }
 
-    public Optional<StorageService> findOneById(UUID id) {
-        return Optional.empty();
+    @Override
+    public Optional<StorageService> getById(UUID id) {
+        return Optional.of(serviceMap.get(id));
     }
 }

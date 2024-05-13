@@ -59,7 +59,7 @@ public class ResourceController {
         UUID accountId = resource.getAccount().getId();
 
         // Get the storageService corresponding to that account
-        StorageService storageService = accountService.findOneById(accountId)
+        StorageService storageService = accountService.getById(accountId)
                 .orElseThrow(() -> new AccountNotFound(String.format("No account with id: %s", accountId)));
 
         // Get view link from the storage provider
@@ -73,7 +73,7 @@ public class ResourceController {
     @PostMapping
     UploadResponse newResource(@Validated @RequestBody UploadRequest request) throws Exception {
         // Get the account with the largest available space
-        StorageService storageService = accountService.getMaxSpace();
+        StorageService storageService = accountService.getMaxSpace(-1);
 
         // Upload
         UploadResponse response = storageService.upload(request);
@@ -95,7 +95,7 @@ public class ResourceController {
         UUID accountId = resource.getAccount().getId();
 
         // Get the storageService corresponding to that account
-        StorageService storageService = accountService.findOneById(accountId)
+        StorageService storageService = accountService.getById(accountId)
                 .orElseThrow(() -> new AccountNotFound(String.format("No account with id: %s", accountId)));
 
         // Delete resource from the storage provider

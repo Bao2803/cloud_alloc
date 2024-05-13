@@ -1,78 +1,66 @@
 package westwood222.cloud_alloc.service.storage;
 
+import com.google.api.client.auth.oauth2.BearerToken;
+import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.extensions.java6.auth.oauth2.AuthorizationCodeInstalledApp;
-import com.google.api.client.extensions.jetty.auth.oauth2.LocalServerReceiver;
-import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow;
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
-import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
-import com.google.api.client.http.HttpTransport;
+import com.google.api.client.googleapis.auth.oauth2.GoogleOAuthConstants;
+import com.google.api.client.http.GenericUrl;
 import com.google.api.client.http.InputStreamContent;
-import com.google.api.client.json.gson.GsonFactory;
-import com.google.api.client.util.store.FileDataStoreFactory;
 import com.google.api.services.drive.Drive;
-import com.google.api.services.drive.DriveScopes;
+import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
-import org.springframework.stereotype.Service;
+import westwood222.cloud_alloc.config.AppConfig;
 import westwood222.cloud_alloc.dto.delete.DeleteRequest;
 import westwood222.cloud_alloc.dto.upload.UploadRequest;
 import westwood222.cloud_alloc.dto.upload.UploadResponse;
 import westwood222.cloud_alloc.dto.view.ViewRequest;
 import westwood222.cloud_alloc.dto.view.ViewResponse;
+import westwood222.cloud_alloc.model.Account;
 
 import java.io.*;
-import java.security.GeneralSecurityException;
-import java.util.Collections;
-import java.util.List;
 
-@Service
 public class GoogleStorageService implements StorageService {
-    /* Configuration */ // TODO: 1)Need to upload new Repo for each account 2)Somehow config in another class?
-    private static final String APPLICATION_NAME = "cloud_alloc";
-    private static final List<String> SCOPES = Collections.singletonList(DriveScopes.DRIVE);
-    private static final HttpTransport HTTP_TRANSPORT;
-    private static final GsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     private static final String CREDENTIALS_FILE_PATH = "/google/credentials.json";
-    private static final String TOKENS_DIRECTORY_PATH = "tokens"; // TODO: database?
-
-    static {
-        try {
-            HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-        } catch (GeneralSecurityException | IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
     private final Drive service;
 
-    public GoogleStorageService() throws IOException {
-        this.service = new Drive.Builder(HTTP_TRANSPORT, JSON_FACTORY, getCredential())
-                .setApplicationName(APPLICATION_NAME)
-                .build();
+    private GoogleStorageService(Drive service) {
+        this.service = service;
     }
-    /* Configuration */
 
-    private static Credential getCredential() throws IOException {
+    public static GoogleStorageService createInstance(Account account) throws IOException {
         InputStream in = GoogleStorageService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
         if (in == null) {
             throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
         }
-        GoogleClientSecrets clientSecrets =
-                GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
+        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(AppConfig.JSON_FACTORY, new InputStreamReader(in));
+        Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
+                .setTransport(AppConfig.HTTP_TRANSPORT)
+                .setJsonFactory(AppConfig.JSON_FACTORY)
+                .setTokenServerUrl(new GenericUrl(GoogleOAuthConstants.TOKEN_SERVER_URL))
+                .setClientAuthentication(new ClientParametersAuthentication(
+                        clientSecrets.getDetails().getClientId(),
+                        clientSecrets.getDetails().getClientSecret())
+                )
+                .build()
+                .setRefreshToken(account.getRefreshToken())
+                .setExpirationTimeMilliseconds(0L)
+                .setExpiresInSeconds(0L)
+                .setAccessToken(null);
 
-        GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-                HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-                .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH)))
-                .setAccessType("offline")
+        Drive service = new Drive.Builder(AppConfig.HTTP_TRANSPORT, AppConfig.JSON_FACTORY, credential)
+                .setApplicationName(AppConfig.APPLICATION_NAME)
                 .build();
-        LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
-
-        return new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
+        return new GoogleStorageService(service);
     }
 
     @Override
-    public int freeSpace() {
-        throw new RuntimeException("not implemented");
+    public long freeSpace() throws IOException {
+        About about = service.about().get()
+                .setFields("storageQuot(limit, usage)")
+                .execute();
+        return about.getMaxUploadSize();
     }
 
     @Override

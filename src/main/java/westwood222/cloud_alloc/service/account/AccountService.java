@@ -1,7 +1,6 @@
 package westwood222.cloud_alloc.service.account;
 
 import lombok.NonNull;
-import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.service.storage.StorageService;
 
 import java.util.Optional;
@@ -17,19 +16,19 @@ public interface AccountService {
     /**
      * Get the best service for uploading (use available space)
      *
+     * @param spaceNeed the space needed for a new file upload. 0 or -1 if unknown.
      * @return CloudService that have the largest available space.
      */
     @NonNull
-    StorageService getMaxSpace();
+    StorageService getMaxSpace(long spaceNeed);
 
     /**
      * Add a new account (Each account is represented by a StorageService)
      *
-     * @param account account to be added
      * @return true if success
      * @throws Exception if fail
      */
-    boolean add(Account account) throws Exception;
+    boolean newAccount() throws Exception;
 
     /**
      * Add a service corresponding to an account back to the internal PriorityQueue.
@@ -46,5 +45,5 @@ public interface AccountService {
      * @param id of the target StorageService
      * @return CloudService with the input id if one exists, Optional.empty() otherwise
      */
-    Optional<StorageService> findOneById(UUID id);
+    Optional<StorageService> getById(UUID id);
 }
