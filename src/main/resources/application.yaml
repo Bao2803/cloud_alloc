@@ -23,8 +23,10 @@ spring:
             client-secret: ${GOOGLE_SECRET}
             scope:
               - https://www.googleapis.com/auth/drive   # drive access
+              - https://www.googleapis.com/auth/userinfo.email
 
 logging:
   level:
+    org.springframework.security.web: DEBUG
     org.springframework.security.oauth2: DEBUG
     org.springframework.web.client.RestTemplate: DEBUG
