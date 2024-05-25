@@ -41,4 +41,4 @@ out/
 /tokens/*
 
 ### .env ###
-local.env
+env/*

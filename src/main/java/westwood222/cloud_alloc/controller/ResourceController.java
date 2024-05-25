@@ -1,108 +1,82 @@
 package westwood222.cloud_alloc.controller;
 
 import lombok.RequiredArgsConstructor;
-import org.springframework.validation.annotation.Validated;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.view.RedirectView;
-import westwood222.cloud_alloc.dto.delete.DeleteRequest;
-import westwood222.cloud_alloc.dto.search.SearchRequest;
-import westwood222.cloud_alloc.dto.search.SearchResponse;
-import westwood222.cloud_alloc.dto.upload.UploadRequest;
-import westwood222.cloud_alloc.dto.upload.UploadResponse;
-import westwood222.cloud_alloc.dto.view.ViewRequest;
-import westwood222.cloud_alloc.dto.view.ViewResponse;
-import westwood222.cloud_alloc.exception.AccountNotFound;
-import westwood222.cloud_alloc.exception.ResourceNotFound;
-import westwood222.cloud_alloc.model.Resource;
-import westwood222.cloud_alloc.model.ResourceProperty;
-import westwood222.cloud_alloc.service.account.AccountService;
+import org.springframework.web.multipart.MultipartFile;
+import westwood222.cloud_alloc.dto.ResponseDTO;
+import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteRequest;
+import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteResponse;
+import westwood222.cloud_alloc.dto.resource.read.ResourceReadRequest;
+import westwood222.cloud_alloc.dto.resource.read.ResourceReadResponse;
+import westwood222.cloud_alloc.dto.resource.search.ResourceSearchRequest;
+import westwood222.cloud_alloc.dto.resource.search.ResourceSearchResponse;
+import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadRequest;
+import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
+import westwood222.cloud_alloc.mapper.ResourceMapper;
 import westwood222.cloud_alloc.service.resource.ResourceService;
-import westwood222.cloud_alloc.service.storage.StorageService;
 
 import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
+@RequestMapping("/resource")
 public class ResourceController {
     private final ResourceService resourceService;
-    private final AccountService accountService;
+    private final ResourceMapper resourceMapper;
 
-    @GetMapping
-    SearchResponse allResources(
-            @RequestParam(value = "page", required = false) int page,
-            @RequestParam(value = "size", required = false) int size,
+    @GetMapping("/")
+    ResponseDTO<ResourceSearchResponse> getAllResources(
+            @RequestParam(value = "filename", required = false) String filename,
             @RequestParam(value = "type", required = false) String mineType,
-            @RequestParam(value = "name", required = false) String name
+            @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        // Build request from params
-        // Default is page 1, size 20, with any name and any type
-        // The resource service handled the normalization
-        ResourceProperty property = ResourceProperty.builder()
-                .mineType(mineType)
-                .name(name)
-                .build();
-        SearchRequest request = SearchRequest.builder()
-                .resourceProperty(property)
-                .page(page)
-                .size(size)
-                .build();
+        ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, filename, mineType);
+        ResourceSearchResponse response = resourceService.search(request);
 
-        // Search the local DB for list of ids
-        return resourceService.findAllByProperty(request);
+        return ResponseDTO.<ResourceSearchResponse>builder()
+                .data(response)
+                .build();
     }
 
-    @GetMapping("{resourceId}")
-    RedirectView oneResource(@PathVariable("resourceId") UUID resourceId) throws Exception {
-        // Get the account that contains the resource
-        Resource resource = resourceService.findOneById(resourceId)
-                .orElseThrow(() -> new ResourceNotFound(String.format("No resource with id: %s", resourceId)));
-        UUID accountId = resource.getAccount().getId();
+    @GetMapping("/{resourceId}")
+    ResponseDTO<ResourceReadResponse> getOneResource(
+            @PathVariable("resourceId") UUID resourceId
+    ) throws Exception {
+        ResourceReadRequest request = resourceMapper.toViewRequest(resourceId);
+        ResourceReadResponse response = resourceService.read(request);
 
-        // Get the storageService corresponding to that account
-        StorageService storageService = accountService.getById(accountId)
-                .orElseThrow(() -> new AccountNotFound(String.format("No account with id: %s", accountId)));
-
-        // Get view link from the storage provider
-        ViewRequest request = ViewRequest.builder()
-                .resourceId(resource.getForeignId())
+        return ResponseDTO.<ResourceReadResponse>builder()
+                .data(response)
                 .build();
-        ViewResponse response = storageService.view(request);
-        return new RedirectView(response.getResourceViewLink());
     }
 
-    @PostMapping
-    UploadResponse newResource(@Validated @RequestBody UploadRequest request) throws Exception {
-        // Get the account with the largest available space
-        StorageService storageService = accountService.getMaxSpace(-1);
+    @PostMapping("/")
+    @ResponseStatus(HttpStatus.CREATED)
+    ResponseDTO<ResourceUploadResponse> createResource(
+            @RequestParam("file") MultipartFile file
+    ) throws Exception {
+        ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(file);
+        ResourceUploadResponse response = resourceService.upload(request);
 
-        // Upload
-        UploadResponse response = storageService.upload(request);
-
-        // Add back storage service to the service list
-        accountService.add(storageService);
-
-        return response;
+        return ResponseDTO.<ResourceUploadResponse>builder()
+                .data(response)
+                .build();
     }
 
-    @DeleteMapping("{resourceId}")
-    void deleteResource(
+    @DeleteMapping("/{resourceId}")
+    ResponseDTO<ResourceDeleteResponse> deleteResource(
             @PathVariable("resourceId") UUID resourceId,
             @RequestParam(value = "hardDelete", defaultValue = "false") boolean isHardDelete
     ) throws Exception {
-        // Get the account that contains the resource
-        Resource resource = resourceService.findOneById(resourceId)
-                .orElseThrow(() -> new ResourceNotFound(String.format("No resource with id: %s", resourceId)));
-        UUID accountId = resource.getAccount().getId();
+        ResourceDeleteRequest request = resourceMapper.toResourceDeleteRequest(resourceId, isHardDelete);
+        ResourceDeleteResponse response = resourceService.delete(request);
 
-        // Get the storageService corresponding to that account
-        StorageService storageService = accountService.getById(accountId)
-                .orElseThrow(() -> new AccountNotFound(String.format("No account with id: %s", accountId)));
-
-        // Delete resource from the storage provider
-        DeleteRequest request = DeleteRequest.builder()
-                .resourceId(resource.getForeignId())
-                .isHardDelete(isHardDelete)
+        return ResponseDTO.<ResourceDeleteResponse>builder()
+                .data(response)
                 .build();
-        storageService.delete(request);
     }
 }
