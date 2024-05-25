@@ -7,6 +7,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 import java.time.Instant;
 import java.util.Set;
@@ -31,7 +32,7 @@ public class Account {
     @OneToMany(mappedBy = "account")
     private Set<Resource> resources;
 
-    @Column(name = "available_space", nullable = false)
+    @Column(name = "available_space")
     private Long availableSpace;
 
     @Transient
@@ -40,6 +41,10 @@ public class Account {
     @Column(name = "refresh_token", nullable = false)
     private String refreshToken;
 
+    @Transient
+    private ClientRegistration clientRegistration;
+
+    @Transient
     @Column(name = "expiration_time", nullable = false)
     private Long expirationTimeMilliseconds;
 
