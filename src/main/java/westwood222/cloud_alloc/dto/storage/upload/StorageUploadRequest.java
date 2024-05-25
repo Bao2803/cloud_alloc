@@ -1,9 +1,9 @@
-package westwood222.cloud_alloc.dto.resource.upload;
+package westwood222.cloud_alloc.dto.storage.upload;
 
 import lombok.Data;
 import org.springframework.web.multipart.MultipartFile;
 
 @Data
-public class ResourceUploadRequest {
+public class StorageUploadRequest {
     private MultipartFile file;
 }
