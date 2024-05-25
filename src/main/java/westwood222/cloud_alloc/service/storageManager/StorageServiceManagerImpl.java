@@ -1,5 +1,6 @@
 package westwood222.cloud_alloc.service.storageManager;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
@@ -16,11 +17,15 @@ import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
+import westwood222.cloud_alloc.oauth.OAuthProperty;
 import westwood222.cloud_alloc.repository.AccountRepository;
 import westwood222.cloud_alloc.service.storage.StorageService;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
@@ -30,14 +35,16 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
     private final Map<UUID, StorageService> serviceMap;
     private final AccountRepository accountRepository;
     private final TreeSet<StorageService> serviceTreeSet;
+    private final OAuthProperty property;
     private final OAuth2AuthorizedClientService authorizedClientService;
 
     @Autowired
     public StorageServiceManagerImpl(
             AccountRepository accountRepository,
             OAuth2AuthorizedClientService authorizedClientService,
-            @Value("${spring.application.service.account.min-size-default}") int minSpace
+            @Value("${spring.application.service.account.min-size-default}") int minSpace, OAuthProperty property
     ) {
+        this.property = property;
         this.MINIMUM_SPACE = minSpace;
         this.accountRepository = accountRepository;
         this.authorizedClientService = authorizedClientService;
@@ -56,7 +63,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
             try {
                 storageServiceMap.put(
                         account.getId(),
-                        StorageServiceManager.createStorageService(account)
+                        StorageServiceManager.createStorageService(account, property)
                 );
             } catch (IOException e) {
                 log.debug("Can't instantiate service for account: {}", account, e);
@@ -112,12 +119,21 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
     }
 
     /**
-     * Called when a user has been successfully authenticated.
-     *
-     * @param request        the request which caused the successful authentication
-     * @param response       the response
-     * @param authentication the <tt>Authentication</tt> object which was created during
-     *                       the authentication process.
+     * Save/update all account metadata in DB. The primary focus is updating account's free space
+     */
+    @PreDestroy
+    private void destroy() {
+        Account account;
+        for (StorageService service : serviceMap.values()) {
+            account = service.getAccount();
+            account.setAvailableSpace(service.getFreeSpace());
+            accountRepository.save(account);
+        }
+    }
+
+    /**
+     * {@inheritDoc} Using the Authentication object to obtains the access and refresh token.
+     * Then, the access and refresh token is used to create a new storage service for the application.
      */
     @Override
     public void onAuthenticationSuccess(
@@ -127,7 +143,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
     ) throws IOException {
         String clientRegistrationId = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
 
-        // Extract the principal (user information)
+        // Extract object that holds access and refresh token
         OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
                 clientRegistrationId,
                 authentication.getName()
@@ -138,13 +154,29 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
                 "Couldn't get refresh token for " + clientRegistrationId
         );
 
+        // Calculate refresh token expiration time
+        Instant refreshTokenExpiredInstant = authorizedClient.getRefreshToken().getExpiresAt();
+        LocalDateTime refreshTokenExpiredDateTime;
+        if (refreshTokenExpiredInstant != null) {
+            refreshTokenExpiredDateTime = LocalDateTime.ofInstant(refreshTokenExpiredInstant, ZoneId.systemDefault());
+        } else {
+            refreshTokenExpiredDateTime = LocalDateTime.now().plusYears(1000);  // Postgres cannot handle LocalDateTime.MAX
+        }
+
+        // Construct account object based on the authentication details
         Account account = Account.builder()
                 .provider(Provider.getProvider(clientRegistrationId))
                 .accessToken(authorizedClient.getAccessToken().getTokenValue())
                 .refreshToken(authorizedClient.getRefreshToken().getTokenValue())
-                .clientRegistration(authorizedClient.getClientRegistration())
+                .expirationDateTime(refreshTokenExpiredDateTime)
                 .build();
-        add(StorageServiceManager.createStorageService(account));
+
+        // Initiate new service; update account's free space according to service's free space
+        StorageService service = StorageServiceManager.createStorageService(account, property);
+        account.setAvailableSpace(service.getFreeSpace());
+
+        // Keep track of the new service
+        add(service);
         accountRepository.save(account);
 
         // Redirect to a success page or handle the response as needed

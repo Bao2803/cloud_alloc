@@ -17,6 +17,7 @@ import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
 import westwood222.cloud_alloc.exception.external.ExternalException;
 import westwood222.cloud_alloc.exception.external.GoogleException;
 import westwood222.cloud_alloc.model.Account;
+import westwood222.cloud_alloc.oauth.OAuthProperty;
 
 import java.io.IOException;
 import java.util.Map;
@@ -34,15 +35,20 @@ public class GoogleStorageService extends StorageService {
         this.freeSpace = freeSpace;
     }
 
-    public static GoogleStorageService createInstance(Account account) {
+    public static GoogleStorageService createInstance(Account account, OAuthProperty property) {
+        OAuthProperty.ProviderSecret secret = property.getRegistration().get(account.getProvider().name());
+        if (secret == null) {
+            throw new RuntimeException("Cannot find OAuth secret for " + account.getProvider());
+        }
+
         Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
                 .setTransport(AppConfig.HTTP_TRANSPORT)
                 .setJsonFactory(AppConfig.JSON_FACTORY)
                 .setTokenServerUrl(new GenericUrl(GoogleOAuthConstants.TOKEN_SERVER_URL))
                 .setClientAuthentication(
                         new ClientParametersAuthentication(
-                                account.getClientRegistration().getClientId(),
-                                account.getClientRegistration().getClientSecret()
+                                secret.getClientId(),
+                                secret.getClientSecret()
                         )
                 )
                 .build()

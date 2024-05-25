@@ -27,9 +27,6 @@ public class Account {
     @Transient
     private String accessToken;
 
-    @Transient
-    private ClientRegistration clientRegistration;
-
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)

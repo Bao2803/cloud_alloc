@@ -17,6 +17,6 @@ public interface StorageMapper {
     StorageReadRequest toStorageReadRequest(String foreignId);
 
     @Mapping(source = "foreignId", target = "foreignId")
-    @Mapping(source = "isHardDelete", target = "isHardDelete")
+    @Mapping(source = "isHardDelete", target = "hardDelete")
     StorageDeleteRequest toStorageDeleteRequest(String foreignId, boolean isHardDelete);
 }

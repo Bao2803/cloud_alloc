@@ -45,7 +45,7 @@ public class ResourceController {
     @GetMapping("/{resourceId}")
     ResponseDTO<ResourceReadResponse> getOneResource(
             @PathVariable("resourceId") UUID resourceId
-    ) throws Exception {
+    ) {
         ResourceReadRequest request = resourceMapper.toViewRequest(resourceId);
         ResourceReadResponse response = resourceService.read(request);
 
@@ -58,7 +58,7 @@ public class ResourceController {
     @ResponseStatus(HttpStatus.CREATED)
     ResponseDTO<ResourceUploadResponse> createResource(
             @RequestParam("file") MultipartFile file
-    ) throws Exception {
+    ) {
         ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(file);
         ResourceUploadResponse response = resourceService.upload(request);
 
@@ -71,7 +71,7 @@ public class ResourceController {
     ResponseDTO<ResourceDeleteResponse> deleteResource(
             @PathVariable("resourceId") UUID resourceId,
             @RequestParam(value = "hardDelete", defaultValue = "false") boolean isHardDelete
-    ) throws Exception {
+    ) {
         ResourceDeleteRequest request = resourceMapper.toResourceDeleteRequest(resourceId, isHardDelete);
         ResourceDeleteResponse response = resourceService.delete(request);
 

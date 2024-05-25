@@ -94,8 +94,8 @@ public class ResourceServiceImpl implements ResourceService {
      */
     @Override
     public ResourceReadResponse read(ResourceReadRequest request) throws ExternalException {
-        Resource resource = resourceRepository.findById(request.getLocalId())
-                .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getLocalId()));
+        Resource resource = resourceRepository.findById(request.getResourceId())
+                .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getResourceId()));
 
         Account account = resource.getAccount();
         StorageService service = storageServiceManager.getServiceById(account.getId());

@@ -4,6 +4,7 @@ import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 import org.mapstruct.NullValuePropertyMappingStrategy;
 import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteRequest;
 import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteResponse;
@@ -20,6 +21,7 @@ import westwood222.cloud_alloc.model.Resource;
 import java.util.List;
 import java.util.UUID;
 
+@Component
 @Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface ResourceMapper {
     @Mapping(source = "pageable", target = "pageable")
@@ -42,7 +44,7 @@ public interface ResourceMapper {
     ResourceUploadResponse toResourceUploadResponse(UUID localId, StorageUploadResponse storageResponse);
 
     @Mapping(source = "localId", target = "localId")
-    @Mapping(source = "isHardDelete", target = "isHardDelete")
+    @Mapping(source = "isHardDelete", target = "hardDelete")
     ResourceDeleteRequest toResourceDeleteRequest(UUID localId, boolean isHardDelete);
 
     @Mapping(source = "resource.id", target = "resourceId")

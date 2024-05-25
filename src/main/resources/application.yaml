@@ -6,13 +6,13 @@ spring:
         min-size-default: 1024
 
   datasource:
-    url: ${DB_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
 
   jpa:
     hibernate:
-      ddl-auto: create
+      ddl-auto: update
 
   security:
     oauth2:
@@ -25,8 +25,15 @@ spring:
               - https://www.googleapis.com/auth/drive   # drive access
               - https://www.googleapis.com/auth/userinfo.email
 
+springdoc:
+  swagger-ui:
+    operationsSorter: method
+    try-it-out-enabled: true
+  writer-with-order-by-keys: true
+
 logging:
   level:
     org.springframework.security.web: DEBUG
     org.springframework.security.oauth2: DEBUG
     org.springframework.web.client.RestTemplate: DEBUG
+    org.hibernate.SQL: DEBUG
