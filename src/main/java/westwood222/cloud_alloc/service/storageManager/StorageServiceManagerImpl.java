@@ -1,4 +1,4 @@
-package westwood222.cloud_alloc.service.account;
+package westwood222.cloud_alloc.service.storageManager;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -12,18 +12,20 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.repository.AccountRepository;
 import westwood222.cloud_alloc.service.storage.StorageService;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.util.*;
 
 @Slf4j
 @Service
-public class AccountServiceImpl implements AccountService {
+public class StorageServiceManagerImpl implements StorageServiceManager {
     private final long MINIMUM_SPACE;   // in bytes
     private final Map<UUID, StorageService> serviceMap;
     private final AccountRepository accountRepository;
@@ -31,7 +33,7 @@ public class AccountServiceImpl implements AccountService {
     private final OAuth2AuthorizedClientService authorizedClientService;
 
     @Autowired
-    public AccountServiceImpl(
+    public StorageServiceManagerImpl(
             AccountRepository accountRepository,
             OAuth2AuthorizedClientService authorizedClientService,
             @Value("${spring.application.service.account.min-size-default}") int minSpace
@@ -54,7 +56,7 @@ public class AccountServiceImpl implements AccountService {
             try {
                 storageServiceMap.put(
                         account.getId(),
-                        AccountService.createStorageService(account)
+                        StorageServiceManager.createStorageService(account)
                 );
             } catch (IOException e) {
                 log.debug("Can't instantiate service for account: {}", account, e);
@@ -71,7 +73,7 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public @NonNull StorageService getBestFit(long spaceNeed) {
+    public @NonNull StorageService getServiceBySpace(long spaceNeed) throws InsufficientStorage {
         StorageService queryObject = createQueryObject(spaceNeed);
 
         StorageService service = serviceTreeSet.higher(queryObject);
@@ -95,13 +97,18 @@ public class AccountServiceImpl implements AccountService {
     }
 
     @Override
-    public boolean add(StorageService service) {
+    public boolean add(@NonNull StorageService service) {
         return serviceTreeSet.add(service);
     }
 
     @Override
-    public Optional<StorageService> getById(UUID id) {
-        return Optional.of(serviceMap.get(id));
+    public @Nonnull StorageService getServiceById(UUID id) throws AccountNotFound {
+        StorageService storageService = serviceMap.get(id);
+        if (storageService == null) {
+            throw new AccountNotFound("No account with id " + id);
+        }
+        serviceTreeSet.remove(storageService);
+        return storageService;
     }
 
     /**
@@ -137,7 +144,7 @@ public class AccountServiceImpl implements AccountService {
                 .refreshToken(authorizedClient.getRefreshToken().getTokenValue())
                 .clientRegistration(authorizedClient.getClientRegistration())
                 .build();
-        add(AccountService.createStorageService(account));
+        add(StorageServiceManager.createStorageService(account));
         accountRepository.save(account);
 
         // Redirect to a success page or handle the response as needed

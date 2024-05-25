@@ -3,94 +3,125 @@ package westwood222.cloud_alloc.service.storage;
 import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
 import com.google.api.client.auth.oauth2.Credential;
-import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets;
 import com.google.api.client.googleapis.auth.oauth2.GoogleOAuthConstants;
 import com.google.api.client.http.GenericUrl;
-import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
-import com.google.api.services.drive.model.File;
 import westwood222.cloud_alloc.config.AppConfig;
-import westwood222.cloud_alloc.dto.delete.DeleteRequest;
-import westwood222.cloud_alloc.dto.upload.UploadRequest;
-import westwood222.cloud_alloc.dto.upload.UploadResponse;
-import westwood222.cloud_alloc.dto.view.ViewRequest;
-import westwood222.cloud_alloc.dto.view.ViewResponse;
+import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
+import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
+import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
+import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
+import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
+import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
+import westwood222.cloud_alloc.exception.external.ExternalException;
+import westwood222.cloud_alloc.exception.external.GoogleException;
 import westwood222.cloud_alloc.model.Account;
 
-import java.io.*;
+import java.io.IOException;
+import java.util.Map;
 
-public class GoogleStorageService implements StorageService {
-    private static final String CREDENTIALS_FILE_PATH = "/google/credentials.json";
+public class GoogleStorageService extends StorageService {
+    public static final Map<String, String> OAuthExtraParam = Map.of(
+            "access_type", "offline"
+    );
 
     private final Drive service;
 
-    private GoogleStorageService(Drive service) {
-        this.service = service;
+    private GoogleStorageService(Account account, Drive drive, long freeSpace) {
+        super(account, freeSpace);
+        this.service = drive;
+        this.freeSpace = freeSpace;
     }
 
-    public static GoogleStorageService createInstance(Account account) throws IOException {
-        InputStream in = GoogleStorageService.class.getResourceAsStream(CREDENTIALS_FILE_PATH);
-        if (in == null) {
-            throw new FileNotFoundException("Resource not found: " + CREDENTIALS_FILE_PATH);
-        }
-        GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(AppConfig.JSON_FACTORY, new InputStreamReader(in));
+    public static GoogleStorageService createInstance(Account account) {
         Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
                 .setTransport(AppConfig.HTTP_TRANSPORT)
                 .setJsonFactory(AppConfig.JSON_FACTORY)
                 .setTokenServerUrl(new GenericUrl(GoogleOAuthConstants.TOKEN_SERVER_URL))
-                .setClientAuthentication(new ClientParametersAuthentication(
-                        clientSecrets.getDetails().getClientId(),
-                        clientSecrets.getDetails().getClientSecret())
+                .setClientAuthentication(
+                        new ClientParametersAuthentication(
+                                account.getClientRegistration().getClientId(),
+                                account.getClientRegistration().getClientSecret()
+                        )
                 )
                 .build()
                 .setRefreshToken(account.getRefreshToken())
-                .setExpirationTimeMilliseconds(0L)
-                .setExpiresInSeconds(0L)
-                .setAccessToken(null);
+                .setAccessToken(account.getAccessToken());
 
         Drive service = new Drive.Builder(AppConfig.HTTP_TRANSPORT, AppConfig.JSON_FACTORY, credential)
                 .setApplicationName(AppConfig.APPLICATION_NAME)
                 .build();
-        return new GoogleStorageService(service);
+
+        long freeSpace = getFreeSpaceFromDrive(service);
+
+        return new GoogleStorageService(account, service, freeSpace);
     }
 
-    @Override
-    public long freeSpace() throws IOException {
-        About about = service.about().get()
-                .setFields("storageQuot(limit, usage)")
-                .execute();
-        return about.getMaxUploadSize();
-    }
-
-    @Override
-    public UploadResponse upload(UploadRequest request) throws IOException {
-        try (InputStream inputFile = new BufferedInputStream(new FileInputStream(request.getResourcePath()))) {
-            InputStreamContent mediaContent = new InputStreamContent(request.getResourceProperty().getName(), inputFile);
-            File result = service.files()
-                    .create(new File().setName(request.getResourceProperty().getName()), mediaContent)
+    private static long getFreeSpaceFromDrive(Drive drive) throws ExternalException {
+        About about;
+        try {
+            about = drive.about().get()
+                    .setFields("storageQuota(limit, usage)")
                     .execute();
-            return UploadResponse.builder().resourceId(result.getId()).build();
+        } catch (IOException e) {
+            throw new GoogleException(e);
         }
+        return about.getStorageQuota().getLimit() - about.getStorageQuota().getUsage();
+    }
+
+    private void refreshFreeSpace() {
+        this.freeSpace = getFreeSpaceFromDrive(this.service);
     }
 
     @Override
-    public ViewResponse view(ViewRequest request) throws IOException {
-        File result = service.files()
-                .get(request.getResourceId())
-                .setFields("webViewLink")
-                .execute();
-        return ViewResponse.builder().resourceViewLink(result.getWebViewLink()).build();
+    public StorageUploadResponse upload(StorageUploadRequest request) throws ExternalException {
+//        try (InputStream inputFile = new BufferedInputStream(new FileInputStream(request.getResourcePath()))) {
+//            InputStreamContent mediaContent = new InputStreamContent(request.getResourceProperty().getName(), inputFile);
+//            File result;
+//            try {
+//                result = service.files()
+//                        .create(
+//                                new File()
+//                                        .setName(request.getResourceProperty().getName())
+//                                        .setMimeType(request.getResourceProperty().getMineType()),
+//                                mediaContent)
+//                        .execute();
+//
+//                refreshFreeSpace();
+//            } catch (IOException e) {
+//                throw new GoogleException(e);
+//            }
+//            return ResourceUploadResponse.builder().resourceId(result.getId()).build();
+//        }
+        return null;
     }
 
     @Override
-    public void delete(DeleteRequest request) throws IOException {
-        if (request.isHardDelete()) {
-            service.files().delete(request.getResourceId()).execute();
-        } else {
-            File temp = new File();
-            temp.setTrashed(true);
-            service.files().update(request.getResourceId(), temp).execute();
-        }
+    public StorageReadResponse read(StorageReadRequest request) throws ExternalException {
+//        File result = service.files()
+//                .get(request.getResourceId())
+//                .setFields("webViewLink")
+//                .execute();
+//        return ResourceReadResponse.builder().resourceViewLink(result.getWebViewLink()).build();
+        return null;
+    }
+
+    @Override
+    public StorageDeleteResponse delete(StorageDeleteRequest request) {
+//        ResourceDeleteResponse response = new ResourceDeleteResponse();
+//        try {
+//            if (request.isHardDelete()) {
+//                service.files().delete(request.getResourceId()).execute();
+//            } else {
+//                File temp = new File();
+//                temp.setTrashed(true);
+//                service.files().update(request.getResourceId(), temp).execute();
+//            }
+//        } catch (IOException e) {
+//            throw new GoogleException(e);
+//        }
+//        return response;
+        return null;
     }
 }

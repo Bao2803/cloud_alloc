@@ -1,23 +1,23 @@
-package westwood222.cloud_alloc.service.account;
+package westwood222.cloud_alloc.service.storageManager;
 
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import westwood222.cloud_alloc.exception.internal.AccountNotFound;
+import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
 import westwood222.cloud_alloc.model.Account;
-import westwood222.cloud_alloc.service.storage.StorageService;
 import westwood222.cloud_alloc.service.storage.GoogleStorageService;
 import westwood222.cloud_alloc.service.storage.StorageService;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
-import java.util.Optional;
 import java.util.UUID;
 
 /**
- * This service managing all the cloud storage account provided by the user.
+ * This class manage all the cloud storage account provided by the user.
  * It interacts directly with the {@link westwood222.cloud_alloc.repository.ResourceRepository} to keep track of
  * the users' storage accounts metadata.
- * It also in charge of managing all StorageService instances during runtime.
+ * It also in charge of instantiate all StorageService instances during startup.
  */
-public interface AccountService extends AuthenticationSuccessHandler {
+public interface StorageServiceManager extends AuthenticationSuccessHandler {
     /**
      * Create a new instance of StorageService based on the input account.
      *
@@ -31,23 +31,31 @@ public interface AccountService extends AuthenticationSuccessHandler {
         };
     }
 
-    @Nonnull
-    StorageService getBestFit(long spaceNeed);
-
     /**
-     * Add a service corresponding to an account back to the internal PriorityQueue.
+     * Add/return a service.
      *
-     * @param service serv
+     * @param service "rented"/new service that will be managed by the manager
      * @return true if success
-     * @throws Exception if fail
      */
-    boolean add(StorageService service) throws Exception;
+    boolean add(@Nonnull StorageService service);
 
     /**
-     * Get the service corresponding to the input id
+     * Get a StorageService for uploading file with {@code spaceNeed}. The algorithm of which service to be used is
+     * implementation specific.
+     *
+     * @param spaceNeed the space of the uploaded file
+     * @return a service that can be used to upload file.
+     * Caller MUST RETURN the service to the manager using by calling {@link StorageServiceManager#add(StorageService)}
+     */
+    @Nonnull
+    StorageService getServiceBySpace(long spaceNeed) throws InsufficientStorage;
+
+    /**
+     * Get the service corresponding to the input id.
      *
      * @param id of the target StorageService
-     * @return CloudService with the input id if one exists, Optional.empty() otherwise
+     * @return CloudService with the input id if one exists, Optional.empty() otherwise.
+     * Caller MUST RETURN the service to the manager using by calling {@link StorageServiceManager#add(StorageService)}
      */
-    Optional<StorageService> getById(UUID id);
+    StorageService getServiceById(UUID id) throws AccountNotFound;
 }
