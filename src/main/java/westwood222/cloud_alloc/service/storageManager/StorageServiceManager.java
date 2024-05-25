@@ -1,8 +1,13 @@
 package westwood222.cloud_alloc.service.account;
 
-import lombok.NonNull;
+import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
+import westwood222.cloud_alloc.model.Account;
+import westwood222.cloud_alloc.service.storage.StorageService;
+import westwood222.cloud_alloc.service.storage.GoogleStorageService;
 import westwood222.cloud_alloc.service.storage.StorageService;
 
+import javax.annotation.Nonnull;
+import java.io.IOException;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -12,23 +17,22 @@ import java.util.UUID;
  * the users' storage accounts metadata.
  * It also in charge of managing all StorageService instances during runtime.
  */
-public interface AccountService {
+public interface AccountService extends AuthenticationSuccessHandler {
     /**
-     * Get the best service for uploading (use available space)
+     * Create a new instance of StorageService based on the input account.
      *
-     * @param spaceNeed the space needed for a new file upload. 0 or -1 if unknown.
-     * @return CloudService that have the largest available space.
+     * @param account contains information for OAuth2.0
+     * @return StorageService that holds the accessToken to the input account
      */
-    @NonNull
-    StorageService getMaxSpace(long spaceNeed);
+    static StorageService createStorageService(Account account) throws IOException {
+        return switch (account.getProvider()) {
+            case google -> GoogleStorageService.createInstance(account);
+            case microsoft, dropbox -> throw new RuntimeException("Not implemented");
+        };
+    }
 
-    /**
-     * Add a new account (Each account is represented by a StorageService)
-     *
-     * @return true if success
-     * @throws Exception if fail
-     */
-    boolean newAccount() throws Exception;
+    @Nonnull
+    StorageService getBestFit(long spaceNeed);
 
     /**
      * Add a service corresponding to an account back to the internal PriorityQueue.

@@ -1,15 +1,13 @@
-package westwood222.cloud_alloc.dto.search;
+package westwood222.cloud_alloc.dto.storage.search;
 
-import lombok.Builder;
 import lombok.Data;
 import westwood222.cloud_alloc.model.Resource;
 
 import java.util.List;
 
 @Data
-@Builder
-public class SearchResponse {
+public class ResourceSearchResponse {
     int nextPage;
-    int nextSize;
+    int totalSize;
     List<Resource> resources;
 }
