@@ -10,6 +10,7 @@ import org.hibernate.annotations.UpdateTimestamp;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -20,6 +21,15 @@ import java.util.UUID;
 @AllArgsConstructor
 @Table(name = "account")
 public class Account {
+    @OneToMany(mappedBy = "account")
+    private Set<Resource> resources;
+
+    @Transient
+    private String accessToken;
+
+    @Transient
+    private ClientRegistration clientRegistration;
+
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,24 +39,14 @@ public class Account {
     @Enumerated(EnumType.STRING)
     private Provider provider;
 
-    @OneToMany(mappedBy = "account")
-    private Set<Resource> resources;
-
     @Column(name = "available_space")
     private Long availableSpace;
-
-    @Transient
-    private String accessToken;
 
     @Column(name = "refresh_token", nullable = false)
     private String refreshToken;
 
-    @Transient
-    private ClientRegistration clientRegistration;
-
-    @Transient
-    @Column(name = "expiration_time", nullable = false)
-    private Long expirationTimeMilliseconds;
+    @Column(name = "expiration_date_time", nullable = false)
+    private LocalDateTime expirationDateTime;
 
     @CreationTimestamp
     private Instant createdAt;

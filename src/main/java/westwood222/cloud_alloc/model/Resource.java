@@ -22,6 +22,10 @@ import java.util.UUID;
 @SoftDelete(strategy = SoftDeleteType.DELETED)
 @Table(name = "resource", uniqueConstraints = @UniqueConstraint(columnNames = {"account_id", "foreign_id"}))
 public class Resource implements Serializable {
+    @ManyToOne
+    @JoinColumn(name = "account_id", referencedColumnName = "id")
+    private Account account;
+
     @Id
     @Column(name = "id")
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -29,10 +33,6 @@ public class Resource implements Serializable {
 
     @Column(name = "foreign_id")
     private String foreignId;
-
-    @ManyToOne
-    @JoinColumn(name = "account_id", referencedColumnName = "id")
-    private Account account;
 
     @Embedded
     private ResourceProperty property;
