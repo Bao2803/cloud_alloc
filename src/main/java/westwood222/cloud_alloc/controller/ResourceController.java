@@ -1,5 +1,6 @@
 package westwood222.cloud_alloc.controller;
 
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -23,18 +24,19 @@ import java.util.UUID;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/resource")
+@RequestMapping("/api/v1/resource")
 public class ResourceController {
     private final ResourceService resourceService;
     private final ResourceMapper resourceMapper;
 
-    @GetMapping("/")
+    @GetMapping
+    @Operation(summary = "Search for resources")
     ResponseDTO<ResourceSearchResponse> getAllResources(
-            @RequestParam(value = "filename", required = false) String filename,
+            @RequestParam(value = "name", required = false) String name,
             @RequestParam(value = "type", required = false) String mineType,
             @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, filename, mineType);
+        ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mineType);
         ResourceSearchResponse response = resourceService.search(request);
 
         return ResponseDTO.<ResourceSearchResponse>builder()
@@ -43,6 +45,7 @@ public class ResourceController {
     }
 
     @GetMapping("/{resourceId}")
+    @Operation(summary = "Get a specific resource")
     ResponseDTO<ResourceReadResponse> getOneResource(
             @PathVariable("resourceId") UUID resourceId
     ) {
@@ -54,8 +57,9 @@ public class ResourceController {
                 .build();
     }
 
-    @PostMapping("/")
+    @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a new resource")
     ResponseDTO<ResourceUploadResponse> createResource(
             @RequestParam("file") MultipartFile file
     ) {
@@ -68,6 +72,7 @@ public class ResourceController {
     }
 
     @DeleteMapping("/{resourceId}")
+    @Operation(summary = "Delete a resource")
     ResponseDTO<ResourceDeleteResponse> deleteResource(
             @PathVariable("resourceId") UUID resourceId,
             @RequestParam(value = "hardDelete", defaultValue = "false") boolean isHardDelete

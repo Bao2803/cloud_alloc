@@ -23,6 +23,8 @@ import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
 
 import java.io.IOException;
+import java.net.FileNameMap;
+import java.net.URLConnection;
 import java.time.LocalDateTime;
 import java.util.Map;
 
@@ -33,12 +35,14 @@ public class GoogleStorageService extends StorageService {
 
     private final Drive service;
     private final StorageMapper storageMapper;
+    private final FileNameMap fileNameMap;
 
     private GoogleStorageService(Account account, Drive drive, long freeSpace, StorageMapper storageMapper) {
         super(account, freeSpace);
         this.service = drive;
         this.freeSpace = freeSpace;
         this.storageMapper = storageMapper;
+        this.fileNameMap = URLConnection.getFileNameMap();
     }
 
     /**
@@ -114,11 +118,12 @@ public class GoogleStorageService extends StorageService {
     public StorageUploadResponse upload(StorageUploadRequest request) {
         String name = request.getFile().getName();
         try {
-            InputStreamContent mediaContent = new InputStreamContent(name, request.getFile().getInputStream());
+            String mineType = fileNameMap.getContentTypeFor(request.getFile().getOriginalFilename());
+            InputStreamContent mediaContent = new InputStreamContent(mineType, request.getFile().getInputStream());
             File result = service.files()
                     .create(
                             new File().setName(name)
-                                    .setMimeType(request.getFile().getContentType()),
+                                    .setMimeType(mineType),
                             mediaContent
                     )
                     .execute();
@@ -130,6 +135,7 @@ public class GoogleStorageService extends StorageService {
                     .build();
             return storageMapper.toStorageUploadResponse(
                     property,
+                    result.getId(),
                     this.getAccount().getProvider(),
                     this.getAccount().getUsername()
             );

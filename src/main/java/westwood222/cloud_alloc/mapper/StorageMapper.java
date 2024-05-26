@@ -22,9 +22,10 @@ public interface StorageMapper {
 
     @Mapping(source = "property.name", target = "name")
     @Mapping(source = "property.mineType", target = "mineType")
+    @Mapping(source = "foreignId", target = "foreignId")
     @Mapping(source = "provider", target = "provider")
     @Mapping(source = "username", target = "username")
-    StorageUploadResponse toStorageUploadResponse(ResourceProperty property, Provider provider, String username);
+    StorageUploadResponse toStorageUploadResponse(ResourceProperty property, String foreignId, Provider provider, String username);
 
     @Mapping(source = "foreignId", target = "foreignId")
     StorageReadRequest toStorageReadRequest(String foreignId);
