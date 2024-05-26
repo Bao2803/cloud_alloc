@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -19,7 +18,7 @@ import java.util.UUID;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "account")
+@Table(name = "account", uniqueConstraints = @UniqueConstraint(columnNames = {"provider", "username"}))
 public class Account {
     @OneToMany(mappedBy = "account")
     private Set<Resource> resources;
@@ -35,6 +34,9 @@ public class Account {
     @Column(name = "provider", nullable = false)
     @Enumerated(EnumType.STRING)
     private Provider provider;
+
+    @Column(name = "username", nullable = false)
+    private String username;
 
     @Column(name = "available_space")
     private Long availableSpace;

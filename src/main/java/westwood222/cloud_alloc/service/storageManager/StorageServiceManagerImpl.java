@@ -11,10 +11,13 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
+import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
+import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
+import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
@@ -32,22 +35,26 @@ import java.util.*;
 @Service
 public class StorageServiceManagerImpl implements StorageServiceManager {
     private final long MINIMUM_SPACE;   // in bytes
-    private final Map<UUID, StorageService> serviceMap;
-    private final AccountRepository accountRepository;
-    private final TreeSet<StorageService> serviceTreeSet;
     private final OAuthProperty property;
+    private final StorageMapper storageMapper;
+    private final AccountRepository accountRepository;
+    private final Map<UUID, StorageService> serviceMap;
+    private final TreeSet<StorageService> serviceTreeSet;
     private final OAuth2AuthorizedClientService authorizedClientService;
 
     @Autowired
     public StorageServiceManagerImpl(
+            @Value("${spring.application.service.account.min-size-default}") int minSpace,
             AccountRepository accountRepository,
             OAuth2AuthorizedClientService authorizedClientService,
-            @Value("${spring.application.service.account.min-size-default}") int minSpace, OAuthProperty property
+            OAuthProperty property,
+            StorageMapper storageMapper
     ) {
         this.property = property;
         this.MINIMUM_SPACE = minSpace;
         this.accountRepository = accountRepository;
         this.authorizedClientService = authorizedClientService;
+        this.storageMapper = storageMapper;
 
         List<Account> accounts = accountRepository.findAll();
         this.serviceMap = createStorageServiceMap(accounts);
@@ -63,7 +70,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
             try {
                 storageServiceMap.put(
                         account.getId(),
-                        StorageServiceManager.createStorageService(account, property)
+                        StorageServiceManager.createStorageService(account, property, storageMapper)
                 );
             } catch (IOException e) {
                 log.debug("Can't instantiate service for account: {}", account, e);
@@ -141,9 +148,10 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException {
-        String clientRegistrationId = ((OAuth2AuthenticationToken) authentication).getAuthorizedClientRegistrationId();
+        OAuth2AuthenticationToken auth2AuthenticationToken = ((OAuth2AuthenticationToken) authentication);
 
         // Extract object that holds access and refresh token
+        String clientRegistrationId = auth2AuthenticationToken.getAuthorizedClientRegistrationId();
         OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
                 clientRegistrationId,
                 authentication.getName()
@@ -163,16 +171,25 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
             refreshTokenExpiredDateTime = LocalDateTime.now().plusYears(1000);  // Postgres cannot handle LocalDateTime.MAX
         }
 
+        // Get email
+        OAuth2User user = auth2AuthenticationToken.getPrincipal();
+        String email = user.getAttribute("email");
+        Assert.notNull(
+                email,
+                "Couldn't get email for " + clientRegistrationId
+        );
+
         // Construct account object based on the authentication details
         Account account = Account.builder()
                 .provider(Provider.getProvider(clientRegistrationId))
                 .accessToken(authorizedClient.getAccessToken().getTokenValue())
                 .refreshToken(authorizedClient.getRefreshToken().getTokenValue())
+                .username(email)
                 .expirationDateTime(refreshTokenExpiredDateTime)
                 .build();
 
         // Initiate new service; update account's free space according to service's free space
-        StorageService service = StorageServiceManager.createStorageService(account, property);
+        StorageService service = StorageServiceManager.createStorageService(account, property, storageMapper);
         account.setAvailableSpace(service.getFreeSpace());
 
         // Keep track of the new service

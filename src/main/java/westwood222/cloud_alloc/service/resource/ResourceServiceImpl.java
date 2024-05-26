@@ -18,7 +18,6 @@ import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
 import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
 import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
 import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
-import westwood222.cloud_alloc.exception.external.ExternalException;
 import westwood222.cloud_alloc.exception.internal.ResourceNotFound;
 import westwood222.cloud_alloc.mapper.ResourceMapper;
 import westwood222.cloud_alloc.mapper.StorageMapper;
@@ -37,8 +36,8 @@ public class ResourceServiceImpl implements ResourceService {
     private final ResourceMapper resourceMapper;
     private final ResourceRepository resourceRepository;
 
-    private final StorageServiceManager storageServiceManager;
     private final StorageMapper storageMapper;
+    private final StorageServiceManager storageServiceManager;
 
     /**
      * {@inheritDoc}
@@ -64,7 +63,7 @@ public class ResourceServiceImpl implements ResourceService {
      * {@inheritDoc}
      */
     @Override
-    public ResourceUploadResponse upload(ResourceUploadRequest request) throws ExternalException {
+    public ResourceUploadResponse upload(ResourceUploadRequest request) {
         MultipartFile file = request.getFile();
         StorageService service = storageServiceManager.getServiceBySpace(file.getSize());
         try {
@@ -93,7 +92,7 @@ public class ResourceServiceImpl implements ResourceService {
      * {@inheritDoc}
      */
     @Override
-    public ResourceReadResponse read(ResourceReadRequest request) throws ExternalException {
+    public ResourceReadResponse read(ResourceReadRequest request) {
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getResourceId()));
 
@@ -113,7 +112,7 @@ public class ResourceServiceImpl implements ResourceService {
      * {@inheritDoc}
      */
     @Override
-    public ResourceDeleteResponse delete(ResourceDeleteRequest request) throws ExternalException {
+    public ResourceDeleteResponse delete(ResourceDeleteRequest request) {
         Resource resource = resourceRepository.findById(request.getLocalId())
                 .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getLocalId()));
         Account account = resource.getAccount();

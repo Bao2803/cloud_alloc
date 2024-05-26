@@ -3,6 +3,7 @@ package westwood222.cloud_alloc.service.storageManager;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
+import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
 import westwood222.cloud_alloc.service.storage.GoogleStorageService;
@@ -25,9 +26,9 @@ public interface StorageServiceManager extends AuthenticationSuccessHandler {
      * @param account contains information for OAuth2.0
      * @return StorageService that holds the accessToken to the input account
      */
-    static StorageService createStorageService(Account account, OAuthProperty property) throws IOException {
+    static StorageService createStorageService(Account account, OAuthProperty property, StorageMapper storageMapper) throws IOException {
         return switch (account.getProvider()) {
-            case google -> GoogleStorageService.createInstance(account, property);
+            case google -> GoogleStorageService.createInstance(account, property, storageMapper);
             case microsoft, dropbox -> throw new RuntimeException("Not implemented");
         };
     }

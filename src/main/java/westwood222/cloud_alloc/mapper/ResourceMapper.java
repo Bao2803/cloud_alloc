@@ -41,22 +41,28 @@ public interface ResourceMapper {
     ResourceUploadRequest toResourceUploadRequest(MultipartFile file);
 
     @Mapping(source = "localId", target = "resourceId")
+    @Mapping(source = "storageResponse.provider", target = "provider")
+    @Mapping(source = "storageResponse.username", target = "username")
     ResourceUploadResponse toResourceUploadResponse(UUID localId, StorageUploadResponse storageResponse);
 
     @Mapping(source = "localId", target = "localId")
     @Mapping(source = "isHardDelete", target = "hardDelete")
     ResourceDeleteRequest toResourceDeleteRequest(UUID localId, boolean isHardDelete);
 
+    @Mapping(target = "resourceLink", ignore = true)
     @Mapping(source = "resource.id", target = "resourceId")
+    @Mapping(source = "resource.account.username", target = "username")
+    @Mapping(source = "resource.account.provider", target = "provider")
     @Mapping(source = "resource.property.name", target = "resourceName")
     @Mapping(source = "resource.property.mineType", target = "resourceMineType")
-    @Mapping(target = "resourceLink", ignore = true)
     ResourceReadResponse resourceToResourceReadResponse(Resource resource);
 
     @Mapping(source = "resource.id", target = "resourceId")
+    @Mapping(source = "resourceLink", target = "resourceLink")
+    @Mapping(source = "resource.account.username", target = "username")
+    @Mapping(source = "resource.account.provider", target = "provider")
     @Mapping(source = "resource.property.name", target = "resourceName")
     @Mapping(source = "resource.property.mineType", target = "resourceMineType")
-    @Mapping(source = "resourceLink", target = "resourceLink")
     ResourceReadResponse toResourceReadResponse(Resource resource, String resourceLink);
 
     @Mapping(source = "deleteDate", target = "deleteDate")
