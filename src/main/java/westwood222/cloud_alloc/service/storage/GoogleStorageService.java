@@ -9,7 +9,7 @@ import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
-import westwood222.cloud_alloc.config.AppConfig;
+import westwood222.cloud_alloc.config.GoogleConfig;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
 import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
@@ -66,8 +66,8 @@ public class GoogleStorageService extends StorageService {
 
         // Construct Google's credential; this class will handle refreshing token for us
         Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
-                .setTransport(AppConfig.HTTP_TRANSPORT)
-                .setJsonFactory(AppConfig.JSON_FACTORY)
+                .setTransport(GoogleConfig.HTTP_TRANSPORT)
+                .setJsonFactory(GoogleConfig.JSON_FACTORY)
                 .setTokenServerUrl(new GenericUrl(GoogleOAuthConstants.TOKEN_SERVER_URL))
                 .setClientAuthentication(
                         new ClientParametersAuthentication(
@@ -80,8 +80,8 @@ public class GoogleStorageService extends StorageService {
                 .setAccessToken(account.getAccessToken());
 
         // Construct Google's Drive object to perform API calls to Google
-        Drive service = new Drive.Builder(AppConfig.HTTP_TRANSPORT, AppConfig.JSON_FACTORY, credential)
-                .setApplicationName(AppConfig.APPLICATION_NAME)
+        Drive service = new Drive.Builder(GoogleConfig.HTTP_TRANSPORT, GoogleConfig.JSON_FACTORY, credential)
+                .setApplicationName(GoogleConfig.APPLICATION_NAME)
                 .build();
 
         // Fetch current free space from Drive

@@ -20,7 +20,7 @@ services:
   #        db:
   #          condition: service_healthy
 
-  db:
+  postgres:
     env_file:
       - path: ./env/docker.env
     image: postgres

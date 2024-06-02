@@ -17,7 +17,7 @@ import java.util.List;
 
 @Getter
 @Configuration
-public class AppConfig {
+public class GoogleConfig {
     public static final List<String> GOOGLE_SCOPE = Collections.singletonList(DriveScopes.DRIVE);
     public static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     public static final HttpTransport HTTP_TRANSPORT;
