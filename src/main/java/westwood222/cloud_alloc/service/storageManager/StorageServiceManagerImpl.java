@@ -11,7 +11,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.DefaultOAuth2User;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
@@ -150,7 +149,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
     ) throws IOException {
         OAuth2AuthenticationToken auth2AuthenticationToken = ((OAuth2AuthenticationToken) authentication);
 
-        // Extract object that holds access and refresh token
+        // Extract an object that holds access and refresh token
         String clientRegistrationId = auth2AuthenticationToken.getAuthorizedClientRegistrationId();
         OAuth2AuthorizedClient authorizedClient = authorizedClientService.loadAuthorizedClient(
                 clientRegistrationId,
@@ -179,7 +178,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
                 "Couldn't get email for " + clientRegistrationId
         );
 
-        // Construct account object based on the authentication details
+        // Construct an account object based on the authentication details
         Account account = Account.builder()
                 .provider(Provider.getProvider(clientRegistrationId))
                 .accessToken(authorizedClient.getAccessToken().getTokenValue())
