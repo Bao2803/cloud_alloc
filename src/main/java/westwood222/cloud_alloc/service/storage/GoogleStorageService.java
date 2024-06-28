@@ -9,6 +9,7 @@ import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
+import org.springframework.kafka.core.KafkaTemplate;
 import westwood222.cloud_alloc.config.GoogleConfig;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
@@ -32,16 +33,23 @@ public class GoogleStorageService extends StorageService {
     public static final Map<String, String> OAuthExtraParam = Map.of(
             "access_type", "offline"
     );
-
     private final Drive service;
     private final StorageMapper storageMapper;
     private final FileNameMap fileNameMap;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    private GoogleStorageService(Account account, Drive drive, long freeSpace, StorageMapper storageMapper) {
+    private GoogleStorageService(
+            Account account,
+            Drive drive,
+            long freeSpace,
+            KafkaTemplate<String, Object> kafkaTemplate,
+            StorageMapper storageMapper
+    ) {
         super(account, freeSpace);
         this.service = drive;
         this.freeSpace = freeSpace;
         this.storageMapper = storageMapper;
+        this.kafkaTemplate = kafkaTemplate;
         this.fileNameMap = URLConnection.getFileNameMap();
     }
 
@@ -56,7 +64,8 @@ public class GoogleStorageService extends StorageService {
     public static GoogleStorageService createInstance(
             Account account,
             OAuthProperty property,
-            StorageMapper storageMapper
+            StorageMapper storageMapper,
+            KafkaTemplate<String, Object> kafkaTemplate
     ) {
         // Get clientId and clientSecret from application.yml
         OAuthProperty.ProviderSecret secret = property.getRegistration().get(account.getProvider().name());
@@ -87,7 +96,7 @@ public class GoogleStorageService extends StorageService {
         // Fetch current free space from Drive
         long freeSpace = getFreeSpaceFromDrive(service);
 
-        return new GoogleStorageService(account, service, freeSpace, storageMapper);
+        return new GoogleStorageService(account, service, freeSpace, kafkaTemplate, storageMapper);
     }
 
     /**

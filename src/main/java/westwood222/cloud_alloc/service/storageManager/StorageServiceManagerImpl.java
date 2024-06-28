@@ -6,6 +6,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
@@ -40,6 +41,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
     private final Map<UUID, StorageService> serviceMap;
     private final TreeSet<StorageService> serviceTreeSet;
     private final OAuth2AuthorizedClientService authorizedClientService;
+    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Autowired
     public StorageServiceManagerImpl(
@@ -47,13 +49,15 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
             AccountRepository accountRepository,
             OAuth2AuthorizedClientService authorizedClientService,
             OAuthProperty property,
-            StorageMapper storageMapper
+            StorageMapper storageMapper,
+            KafkaTemplate<String, Object> kafkaTemplate
     ) {
         this.property = property;
         this.MINIMUM_SPACE = minSpace;
         this.accountRepository = accountRepository;
         this.authorizedClientService = authorizedClientService;
         this.storageMapper = storageMapper;
+        this.kafkaTemplate = kafkaTemplate;
 
         List<Account> accounts = accountRepository.findAll();
         this.serviceMap = createStorageServiceMap(accounts);
@@ -69,7 +73,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
             try {
                 storageServiceMap.put(
                         account.getId(),
-                        StorageServiceManager.createStorageService(account, property, storageMapper)
+                        StorageServiceManager.createStorageService(account, property, storageMapper, kafkaTemplate)
                 );
             } catch (IOException e) {
                 log.debug("Can't instantiate service for account: {}", account, e);
@@ -188,7 +192,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
                 .build();
 
         // Initiate new service; update account's free space according to service's free space
-        StorageService service = StorageServiceManager.createStorageService(account, property, storageMapper);
+        StorageService service = StorageServiceManager.createStorageService(account, property, storageMapper, kafkaTemplate);
         account.setAvailableSpace(service.getFreeSpace());
 
         // Keep track of the new service
