@@ -1,5 +1,6 @@
 package westwood222.cloud_alloc.service.storageManager;
 
+import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
@@ -26,9 +27,9 @@ public interface StorageServiceManager extends AuthenticationSuccessHandler {
      * @param account contains information for OAuth2.0
      * @return StorageService that holds the accessToken to the input account
      */
-    static StorageService createStorageService(Account account, OAuthProperty property, StorageMapper storageMapper) throws IOException {
+    static StorageService createStorageService(Account account, OAuthProperty property, StorageMapper storageMapper, KafkaTemplate<String, Object> kafkaTemplate) throws IOException {
         return switch (account.getProvider()) {
-            case google -> GoogleStorageService.createInstance(account, property, storageMapper);
+            case google -> GoogleStorageService.createInstance(account, property, storageMapper, kafkaTemplate);
             case microsoft, dropbox -> throw new RuntimeException("Not implemented");
         };
     }

@@ -5,6 +5,22 @@ spring:
       account:
         min-size-default: 1024
 
+  kafka:
+    bootstrap-servers: ${KAFKA_1}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 1
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        partitioner.class: org.apache.kafka.clients.producer.internals.DefaultPartitioner
+        linger.ms: 100
+    consumer:
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      auto-offset-reset: earliest
+
   datasource:
     url: ${POSTGRES_URL}
     username: ${POSTGRES_USERNAME}
@@ -24,6 +40,27 @@ spring:
             scope:
               - https://www.googleapis.com/auth/drive   # drive access
               - https://www.googleapis.com/auth/userinfo.email
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        mime:
+          charset: UTF
+        smtp:
+          ssl:
+            trust: "*"
+          writetimeout: 10000
+          connectiontimeout: 10000
+          timeout: 10000
+          auth: true
+          starttls:
+            enable: true
+            required: true
 
 springdoc:
   swagger-ui:
