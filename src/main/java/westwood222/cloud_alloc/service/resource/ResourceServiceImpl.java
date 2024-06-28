@@ -21,11 +21,9 @@ import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
 import westwood222.cloud_alloc.exception.internal.ResourceNotFound;
 import westwood222.cloud_alloc.mapper.ResourceMapper;
 import westwood222.cloud_alloc.mapper.StorageMapper;
-import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Resource;
 import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.repository.ResourceRepository;
-import westwood222.cloud_alloc.service.storage.StorageService;
 import westwood222.cloud_alloc.service.storageManager.StorageServiceManager;
 
 import java.util.List;
@@ -45,8 +43,9 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     public ResourceSearchResponse search(ResourceSearchRequest request) {
         // Search
-        Page<Resource> page = resourceRepository.findByProperty(
-                request.getResourceProperty(),
+        Page<Resource> page = resourceRepository.findAllByProperty_NameLikeOrProperty_MineTypeLike(
+                request.getResourceProperty().getName(),
+                request.getResourceProperty().getMineType(),
                 request.getPageable()
         );
 
@@ -65,27 +64,24 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     public ResourceUploadResponse upload(ResourceUploadRequest request) {
         MultipartFile file = request.getFile();
-        StorageService service = storageServiceManager.getServiceBySpace(file.getSize());
-        try {
-            StorageUploadRequest storageRequest = storageMapper.toStorageUploadRequest(file);
-            StorageUploadResponse storageResponse = service.upload(storageRequest);
 
-            ResourceProperty property = ResourceProperty.builder()
-                    .name(file.getName())
-                    .mineType(file.getContentType())
-                    .build();
+        // Upload to Cloud
+        StorageUploadRequest storageRequest = storageMapper.toStorageUploadRequest(file);
+        StorageUploadResponse storageResponse = storageServiceManager.upload(storageRequest);
 
-            Resource resource = Resource.builder()
-                    .account(service.getAccount())
-                    .foreignId(storageResponse.getForeignId())
-                    .property(property)
-                    .build();
-            resource = resourceRepository.save(resource);
+        // Save metadata to DB
+        ResourceProperty property = ResourceProperty.builder()
+                .name(file.getName())
+                .mineType(file.getContentType())
+                .build();
+        Resource resource = Resource.builder()
+                .account(storageResponse.getAccount())
+                .foreignId(storageResponse.getForeignId())
+                .property(property)
+                .build();
+        resource = resourceRepository.save(resource);
 
-            return resourceMapper.toResourceUploadResponse(resource.getId(), storageResponse);
-        } finally {
-            storageServiceManager.add(service);
-        }
+        return resourceMapper.toResourceUploadResponse(resource.getId(), storageResponse);
     }
 
     /**
@@ -93,19 +89,18 @@ public class ResourceServiceImpl implements ResourceService {
      */
     @Override
     public ResourceReadResponse read(ResourceReadRequest request) {
+        // Get resource metadata
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getResourceId()));
 
-        Account account = resource.getAccount();
-        StorageService service = storageServiceManager.getServiceById(account.getId());
-        try {
-            StorageReadRequest storageRequest = storageMapper.toStorageReadRequest(resource.getForeignId());
-            StorageReadResponse storageResponse = service.read(storageRequest);
+        // Get resource download link from cloud storage
+        StorageReadRequest storageRequest = storageMapper.toStorageReadRequest(
+                resource.getAccount().getId(),
+                resource.getForeignId()
+        );
+        StorageReadResponse storageResponse = storageServiceManager.read(storageRequest);
 
-            return resourceMapper.toResourceReadResponse(resource, storageResponse.getResourceLink());
-        } finally {
-            storageServiceManager.add(service);
-        }
+        return resourceMapper.toResourceReadResponse(resource, storageResponse.getResourceLink());
     }
 
     /**
@@ -113,27 +108,25 @@ public class ResourceServiceImpl implements ResourceService {
      */
     @Override
     public ResourceDeleteResponse delete(ResourceDeleteRequest request) {
+        // Get resource metadata
         Resource resource = resourceRepository.findById(request.getLocalId())
                 .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getLocalId()));
-        Account account = resource.getAccount();
 
-        StorageService service = storageServiceManager.getServiceById(account.getId());
-        try {
-            StorageDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
-                    resource.getForeignId(),
-                    request.isHardDelete()
-            );
+        // Delete resource from cloud storage
+        StorageDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
+                resource.getAccount().getId(),
+                resource.getForeignId(),
+                request.isHardDelete()
+        );
+        StorageDeleteResponse storageResponse = storageServiceManager.delete(storageRequest);
 
-            StorageDeleteResponse storageResponse = service.delete(storageRequest);
-            resourceRepository.deleteById(request.getLocalId());
-            if (request.isHardDelete()) {
-                // do hard delete somehow
-                System.err.println("NOT IMPLEMENTED: Should be hard delete!");
-            }
-
-            return resourceMapper.storageDeleteResponsetoResourceDeleteResponse(storageResponse);
-        } finally {
-            storageServiceManager.add(service);
+        // Delete resource metadata
+        resourceRepository.deleteById(request.getLocalId());
+        if (request.isHardDelete()) {
+            // do hard delete somehow
+            System.err.println("NOT IMPLEMENTED: Should be hard delete!");
         }
+
+        return resourceMapper.storageDeleteResponsetoResourceDeleteResponse(storageResponse);
     }
 }

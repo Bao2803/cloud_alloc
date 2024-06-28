@@ -1,8 +1,6 @@
 package westwood222.cloud_alloc.service.scheduler;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
-import org.springframework.stereotype.Service;
 import westwood222.cloud_alloc.dto.schedule.CreateTaskRequest;
 import westwood222.cloud_alloc.dto.schedule.CreateTaskResponse;
 import westwood222.cloud_alloc.dto.schedule.DeleteTaskRequest;
@@ -13,12 +11,12 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
 
-@Service
+//@Service
 public class SchedulerServiceImpl implements SchedulerService {
     private final Map<UUID, ScheduledFuture<?>> scheduledTasks;
     private final ThreadPoolTaskScheduler threadPoolTaskScheduler;
 
-    @Autowired
+    //    @Autowired
     public SchedulerServiceImpl(
             ThreadPoolTaskScheduler threadPoolTaskScheduler
     ) {

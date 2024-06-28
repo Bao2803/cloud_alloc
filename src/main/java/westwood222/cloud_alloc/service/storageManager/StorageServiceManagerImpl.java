@@ -1,10 +1,11 @@
 package westwood222.cloud_alloc.service.storageManager;
 
+import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.lang.NonNull;
@@ -15,6 +16,13 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
+import org.springframework.web.multipart.MultipartFile;
+import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
+import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
+import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
+import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
+import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
+import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
 import westwood222.cloud_alloc.mapper.StorageMapper;
@@ -22,7 +30,8 @@ import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
 import westwood222.cloud_alloc.repository.AccountRepository;
-import westwood222.cloud_alloc.service.storage.StorageService;
+import westwood222.cloud_alloc.service.storage.AbstractStorageService;
+import westwood222.cloud_alloc.service.storage.GoogleStorageService;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -33,67 +42,77 @@ import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class StorageServiceManagerImpl implements StorageServiceManager {
-    private final long MINIMUM_SPACE;   // in bytes
-    private final OAuthProperty property;
+    private final OAuthProperty oAuthProperty;
     private final StorageMapper storageMapper;
     private final AccountRepository accountRepository;
-    private final Map<UUID, StorageService> serviceMap;
-    private final TreeSet<StorageService> serviceTreeSet;
     private final OAuth2AuthorizedClientService authorizedClientService;
     private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    @Autowired
-    public StorageServiceManagerImpl(
-            @Value("${spring.application.service.account.min-size-default}") int minSpace,
-            AccountRepository accountRepository,
-            OAuth2AuthorizedClientService authorizedClientService,
-            OAuthProperty property,
-            StorageMapper storageMapper,
-            KafkaTemplate<String, Object> kafkaTemplate
-    ) {
-        this.property = property;
-        this.MINIMUM_SPACE = minSpace;
-        this.accountRepository = accountRepository;
-        this.authorizedClientService = authorizedClientService;
-        this.storageMapper = storageMapper;
-        this.kafkaTemplate = kafkaTemplate;
+    @Value("${spring.application.service.account.min-size-default}")
+    private long MINIMUM_BYTE;
+    private Map<UUID, AbstractStorageService> serviceMap;
+    private TreeSet<AbstractStorageService> serviceTreeSet;
 
+    @PostConstruct
+    private void createStorageServices() {
         List<Account> accounts = accountRepository.findAll();
         this.serviceMap = createStorageServiceMap(accounts);
         this.serviceTreeSet = createStorageServiceTreeSet(serviceMap.values());
     }
 
-    private Map<UUID, StorageService> createStorageServiceMap(
+    /**
+     * Create a new instance of StorageService based on the input account.
+     *
+     * @param account contains information for OAuth2.0
+     * @return StorageService that holds the accessToken to the input account
+     */
+    private AbstractStorageService createStorageService(
+            Account account,
+            StorageMapper storageMapper
+    ) throws IOException {
+        Provider provider = account.getProvider();
+        Map<String, OAuthProperty.ProviderSecret> registeredProvider = oAuthProperty.getRegistration();
+        return switch (provider) {
+            case google -> {
+                OAuthProperty.ProviderSecret googleSecret = registeredProvider.get(provider.name());
+                yield new GoogleStorageService(account, googleSecret, storageMapper);
+            }
+            case microsoft, dropbox -> throw new RuntimeException("Not implemented");
+        };
+    }
+
+    private Map<UUID, AbstractStorageService> createStorageServiceMap(
             List<Account> accounts
     ) {
-        Map<UUID, StorageService> storageServiceMap = new HashMap<>(accounts.size());
+        Map<UUID, AbstractStorageService> storageServiceMap = new HashMap<>(accounts.size());
 
         for (Account account : accounts) {
             try {
                 storageServiceMap.put(
                         account.getId(),
-                        StorageServiceManager.createStorageService(account, property, storageMapper, kafkaTemplate)
+                        createStorageService(account, storageMapper)
                 );
             } catch (IOException e) {
-                log.debug("Can't instantiate service for account: {}", account, e);
+                log.error("Can't instantiate driveService for account: {}", account, e);
             }
         }
 
         return storageServiceMap;
     }
 
-    private TreeSet<StorageService> createStorageServiceTreeSet(Collection<StorageService> services) {
-        TreeSet<StorageService> treeSet = new TreeSet<>(Comparator.comparingLong(StorageService::getFreeSpace));
+    private TreeSet<AbstractStorageService> createStorageServiceTreeSet(Collection<AbstractStorageService> services) {
+        TreeSet<AbstractStorageService> treeSet = new TreeSet<>(Comparator.comparingLong(AbstractStorageService::getFreeSpace));
         treeSet.addAll(services);
         return treeSet;
     }
 
     @Override
-    public @NonNull StorageService getServiceBySpace(long spaceNeed) throws InsufficientStorage {
-        StorageService queryObject = createQueryObject(spaceNeed);
+    public @NonNull AbstractStorageService getServiceBySpace(long spaceNeed) throws InsufficientStorage {
+        AbstractStorageService queryObject = createQueryObject(spaceNeed);
 
-        StorageService service = serviceTreeSet.higher(queryObject);
+        AbstractStorageService service = serviceTreeSet.higher(queryObject);
         try {
             if (service == null || service.getFreeSpace() <= spaceNeed) {
                 throw new InsufficientStorage(String.format("Insufficient storage to upload file with %d", spaceNeed));
@@ -108,19 +127,34 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
         return service;
     }
 
-    private StorageService createQueryObject(long spaceNeed) {
-        spaceNeed = spaceNeed <= 0 ? MINIMUM_SPACE : spaceNeed;
-        return StorageService.createInstance(spaceNeed);
+    private AbstractStorageService createQueryObject(long spaceNeed) {
+        spaceNeed = spaceNeed <= 0 ? MINIMUM_BYTE : spaceNeed;
+        return new AbstractStorageService(new Account(), spaceNeed) {
+            @Override
+            public StorageUploadResponse upload(StorageUploadRequest request) {
+                return null;
+            }
+
+            @Override
+            public StorageReadResponse read(StorageReadRequest request) {
+                return null;
+            }
+
+            @Override
+            public StorageDeleteResponse delete(StorageDeleteRequest request) {
+                return null;
+            }
+        };
     }
 
     @Override
-    public boolean add(@NonNull StorageService service) {
+    public boolean add(@NonNull AbstractStorageService service) {
         return serviceTreeSet.add(service);
     }
 
     @Override
-    public @Nonnull StorageService getServiceById(UUID id) throws AccountNotFound {
-        StorageService storageService = serviceMap.get(id);
+    public @Nonnull AbstractStorageService getServiceById(UUID id) throws AccountNotFound {
+        AbstractStorageService storageService = serviceMap.get(id);
         if (storageService == null) {
             throw new AccountNotFound("No account with id " + id);
         }
@@ -134,7 +168,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
     @PreDestroy
     private void destroy() {
         Account account;
-        for (StorageService service : serviceMap.values()) {
+        for (AbstractStorageService service : serviceMap.values()) {
             account = service.getAccount();
             account.setAvailableSpace(service.getFreeSpace());
             accountRepository.save(account);
@@ -143,7 +177,9 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
 
     /**
      * {@inheritDoc} Using the Authentication object to obtains the access and refresh token.
-     * Then, the access and refresh token is used to create a new storage service for the application.
+     * Then,
+     * the access and refresh token is used
+     * to create a new storage driveService for the application.
      */
     @Override
     public void onAuthenticationSuccess(
@@ -171,7 +207,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
         if (refreshTokenExpiredInstant != null) {
             refreshTokenExpiredDateTime = LocalDateTime.ofInstant(refreshTokenExpiredInstant, ZoneId.systemDefault());
         } else {
-            refreshTokenExpiredDateTime = LocalDateTime.now().plusYears(1000);  // Postgres cannot handle LocalDateTime.MAX
+            refreshTokenExpiredDateTime = LocalDateTime.now().plusYears(1000);  // PSQL can't handle LocalDateTime.MAX
         }
 
         // Get email
@@ -191,15 +227,58 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
                 .expirationDateTime(refreshTokenExpiredDateTime)
                 .build();
 
-        // Initiate new service; update account's free space according to service's free space
-        StorageService service = StorageServiceManager.createStorageService(account, property, storageMapper, kafkaTemplate);
+        // Initiate new driveService; update account's free space according to driveService's free space
+        AbstractStorageService service = createStorageService(account, storageMapper);
         account.setAvailableSpace(service.getFreeSpace());
 
-        // Keep track of the new service
+        // Keep track of the new driveService
         add(service);
+        serviceMap.put(account.getId(), service);
         accountRepository.save(account);
 
         // Redirect to a success page or handle the response as needed
         response.sendRedirect("/home");
+    }
+
+    @Override
+    public StorageUploadResponse upload(StorageUploadRequest request) {
+        MultipartFile file = request.getFile();
+        AbstractStorageService storageService = getServiceBySpace(file.getSize());
+        try {
+            StorageUploadRequest storageRequest = storageMapper.toStorageUploadRequest(file);
+            return storageService.upload(storageRequest);
+        } finally {
+            this.serviceTreeSet.add(storageService);
+        }
+    }
+
+    @Override
+    public StorageReadResponse read(StorageReadRequest request) {
+        AbstractStorageService service = getServiceById(request.getAccountId());
+        try {
+            StorageReadRequest storageRequest = storageMapper.toStorageReadRequest(
+                    null,
+                    request.getForeignId()
+            );
+            return service.read(storageRequest);
+        } finally {
+            this.serviceTreeSet.add(service);
+        }
+    }
+
+    @Override
+    public StorageDeleteResponse delete(StorageDeleteRequest request) {
+        AbstractStorageService service = getServiceById(request.getAccountId());
+        try {
+            StorageDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
+                    null,
+                    request.getForeignId(),
+                    request.isHardDelete()
+            );
+
+            return service.delete(storageRequest);
+        } finally {
+            this.serviceTreeSet.add(service);
+        }
     }
 }

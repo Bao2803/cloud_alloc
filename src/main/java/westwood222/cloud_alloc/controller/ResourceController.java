@@ -32,8 +32,8 @@ public class ResourceController {
     @GetMapping
     @Operation(summary = "Search for resources")
     ResponseDTO<ResourceSearchResponse> getAllResources(
-            @RequestParam(value = "name", required = false) String name,
-            @RequestParam(value = "type", required = false) String mineType,
+            @RequestParam(value = "name", defaultValue = "%%") String name,
+            @RequestParam(value = "type", defaultValue = "%%") String mineType,
             @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mineType);

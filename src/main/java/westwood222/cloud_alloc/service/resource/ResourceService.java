@@ -11,14 +11,15 @@ import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
 import westwood222.cloud_alloc.exception.external.ExternalException;
 
 /**
- * This service to handle the resources (files and folders).
- * It interacts with the {@link westwood222.cloud_alloc.repository.ResourceRepository} to keep track of
- * the location and metadata of all users' resources.
+ * This service handle the resources (files and folders).
+ * It interacts with the {@link westwood222.cloud_alloc.repository.ResourceRepository}
+ * and {@link westwood222.cloud_alloc.service.storageManager.StorageServiceManager} to upload, retrieve, and delete
+ * resource to all {@link westwood222.cloud_alloc.model.Account} provided by the user
  */
 public interface ResourceService {
 
     /**
-     * Search for all resources (known to the system, i.e. uploaded to the cloud through the application) that matches
+     * Search for all resources (known to the system, i.e., uploaded to the cloud through the application) that matches
      * the request's {@link westwood222.cloud_alloc.model.ResourceProperty}. Additionally, response is paged using
      * request's {@link org.springframework.data.domain.Pageable}
      *

@@ -9,7 +9,6 @@ import com.google.api.client.http.InputStreamContent;
 import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
-import org.springframework.kafka.core.KafkaTemplate;
 import westwood222.cloud_alloc.config.GoogleConfig;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
@@ -23,56 +22,37 @@ import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
 
+import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.net.FileNameMap;
 import java.net.URLConnection;
 import java.time.LocalDateTime;
 import java.util.Map;
 
-public class GoogleStorageService extends StorageService {
+public class GoogleStorageService extends AbstractStorageService {
     public static final Map<String, String> OAuthExtraParam = Map.of(
             "access_type", "offline"
     );
-    private final Drive service;
-    private final StorageMapper storageMapper;
-    private final FileNameMap fileNameMap;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
-    private GoogleStorageService(
-            Account account,
-            Drive drive,
-            long freeSpace,
-            KafkaTemplate<String, Object> kafkaTemplate,
+    private final Drive driveService;
+    private final StorageMapper storageMapper;
+    private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
+
+    public GoogleStorageService(
+            @Nonnull Account account,
+            @Nonnull OAuthProperty.ProviderSecret secret,
             StorageMapper storageMapper
     ) {
-        super(account, freeSpace);
-        this.service = drive;
-        this.freeSpace = freeSpace;
+        super(account);
         this.storageMapper = storageMapper;
-        this.kafkaTemplate = kafkaTemplate;
-        this.fileNameMap = URLConnection.getFileNameMap();
+        this.driveService = createGoogleDriveSDK(account, secret);
+        this.freeSpace = getFreeSpaceFromDrive(driveService);
     }
 
-    /**
-     * Construct an instance of {@link GoogleStorageService}.
-     *
-     * @param account       contains refresh token, access token, and Provider (should be Google when it arrived here).
-     * @param property      clientId and clientSecret for Google.
-     * @param storageMapper MapStruct to map Google response to {@link GoogleStorageService}'s DTOs
-     * @return a new instance of {@link GoogleStorageService} that points to {@code account}
-     */
-    public static GoogleStorageService createInstance(
+    private static Drive createGoogleDriveSDK(
             Account account,
-            OAuthProperty property,
-            StorageMapper storageMapper,
-            KafkaTemplate<String, Object> kafkaTemplate
+            OAuthProperty.ProviderSecret secret
     ) {
-        // Get clientId and clientSecret from application.yml
-        OAuthProperty.ProviderSecret secret = property.getRegistration().get(account.getProvider().name());
-        if (secret == null) {
-            throw new RuntimeException("Cannot find OAuth secret for " + account.getProvider());
-        }
-
         // Construct Google's credential; this class will handle refreshing token for us
         Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
                 .setTransport(GoogleConfig.HTTP_TRANSPORT)
@@ -89,14 +69,9 @@ public class GoogleStorageService extends StorageService {
                 .setAccessToken(account.getAccessToken());
 
         // Construct Google's Drive object to perform API calls to Google
-        Drive service = new Drive.Builder(GoogleConfig.HTTP_TRANSPORT, GoogleConfig.JSON_FACTORY, credential)
+        return new Drive.Builder(GoogleConfig.HTTP_TRANSPORT, GoogleConfig.JSON_FACTORY, credential)
                 .setApplicationName(GoogleConfig.APPLICATION_NAME)
                 .build();
-
-        // Fetch current free space from Drive
-        long freeSpace = getFreeSpaceFromDrive(service);
-
-        return new GoogleStorageService(account, service, freeSpace, kafkaTemplate, storageMapper);
     }
 
     /**
@@ -117,19 +92,19 @@ public class GoogleStorageService extends StorageService {
     }
 
     /**
-     * Update {@link StorageService#freeSpace} by making API call to Google
+     * Update {@link GoogleStorageService#freeSpace} by making API call to Google
      */
     private void refreshFreeSpace() {
-        this.freeSpace = getFreeSpaceFromDrive(this.service);
+        this.freeSpace = getFreeSpaceFromDrive(this.driveService);
     }
 
     @Override
     public StorageUploadResponse upload(StorageUploadRequest request) {
-        String name = request.getFile().getName();
+        String name = request.getFile().getOriginalFilename();
         try {
             String mineType = fileNameMap.getContentTypeFor(request.getFile().getOriginalFilename());
             InputStreamContent mediaContent = new InputStreamContent(mineType, request.getFile().getInputStream());
-            File result = service.files()
+            File result = driveService.files()
                     .create(
                             new File().setName(name)
                                     .setMimeType(mineType),
@@ -145,8 +120,7 @@ public class GoogleStorageService extends StorageService {
             return storageMapper.toStorageUploadResponse(
                     property,
                     result.getId(),
-                    this.getAccount().getProvider(),
-                    this.getAccount().getUsername()
+                    account
             );
         } catch (IOException e) {
             throw new GoogleException(e);
@@ -156,7 +130,7 @@ public class GoogleStorageService extends StorageService {
     @Override
     public StorageReadResponse read(StorageReadRequest request) {
         try {
-            File result = service.files()
+            File result = driveService.files()
                     .get(request.getForeignId())
                     .setFields("webViewLink")
                     .execute();
@@ -175,15 +149,15 @@ public class GoogleStorageService extends StorageService {
     public StorageDeleteResponse delete(StorageDeleteRequest request) {
         try {
             if (request.isHardDelete()) {
-                service.files().delete(request.getForeignId()).execute();
-                return new StorageDeleteResponse();
+                driveService.files().delete(request.getForeignId()).execute();
+                return storageMapper.toStorageDeleteResponse(LocalDateTime.now());
             }
 
             File temp = new File();
             temp.setTrashed(true);
-            service.files().update(request.getForeignId(), temp).execute();
+            driveService.files().update(request.getForeignId(), temp).execute();
 
-            // https://developers.google.com/drive/api/guides/delete trash items are removed by Google after 30 days
+            // Google removes trash items after 30 days: https://developers.google.com/drive/api/guides/delete
             int maxTrashTime = 30;
             return storageMapper.toStorageDeleteResponse(LocalDateTime.now().plusDays(maxTrashTime));
         } catch (IOException e) {

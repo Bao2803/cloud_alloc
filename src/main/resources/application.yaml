@@ -3,7 +3,7 @@ spring:
     name: cloud_alloc
     service:
       account:
-        min-size-default: 1024
+        min-size-default: 1024 # in bytes
 
   kafka:
     bootstrap-servers: ${KAFKA_1}

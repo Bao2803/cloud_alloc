@@ -11,7 +11,7 @@ import westwood222.cloud_alloc.service.scheduler.SchedulerService;
 
 import java.util.UUID;
 
-@RestController
+//@RestController
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/schedule")
 public class SchedulerController {
