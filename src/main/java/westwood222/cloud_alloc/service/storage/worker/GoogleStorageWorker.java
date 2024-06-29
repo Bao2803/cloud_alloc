@@ -1,4 +1,4 @@
-package westwood222.cloud_alloc.service.storage;
+package westwood222.cloud_alloc.service.storage.worker;
 
 import com.google.api.client.auth.oauth2.BearerToken;
 import com.google.api.client.auth.oauth2.ClientParametersAuthentication;
@@ -27,18 +27,13 @@ import java.io.IOException;
 import java.net.FileNameMap;
 import java.net.URLConnection;
 import java.time.LocalDateTime;
-import java.util.Map;
 
-public class GoogleStorageService extends AbstractStorageService {
-    public static final Map<String, String> OAuthExtraParam = Map.of(
-            "access_type", "offline"
-    );
-
+public class GoogleStorageWorker extends StorageWorker {
     private final Drive driveService;
     private final StorageMapper storageMapper;
     private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
 
-    public GoogleStorageService(
+    public GoogleStorageWorker(
             @Nonnull Account account,
             @Nonnull OAuthProperty.ProviderSecret secret,
             StorageMapper storageMapper
@@ -92,7 +87,7 @@ public class GoogleStorageService extends AbstractStorageService {
     }
 
     /**
-     * Update {@link GoogleStorageService#freeSpace} by making API call to Google
+     * Update the parent's freeSpace by making API call to Google
      */
     private void refreshFreeSpace() {
         this.freeSpace = getFreeSpaceFromDrive(this.driveService);

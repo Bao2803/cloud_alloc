@@ -9,11 +9,12 @@ import westwood222.cloud_alloc.dto.resource.search.ResourceSearchResponse;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadRequest;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
 import westwood222.cloud_alloc.exception.external.ExternalException;
+import westwood222.cloud_alloc.service.storage.manager.StorageManager;
 
 /**
  * This service handle the resources (files and folders).
  * It interacts with the {@link westwood222.cloud_alloc.repository.ResourceRepository}
- * and {@link westwood222.cloud_alloc.service.storageManager.StorageServiceManager} to upload, retrieve, and delete
+ * and {@link StorageManager} to upload, retrieve, and delete
  * resource to all {@link westwood222.cloud_alloc.model.Account} provided by the user
  */
 public interface ResourceService {

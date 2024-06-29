@@ -9,9 +9,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
 import westwood222.cloud_alloc.model.Provider;
-import westwood222.cloud_alloc.service.storage.GoogleStorageService;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -20,6 +18,12 @@ import java.util.Map;
  */
 @Component
 public class ExtraParamAuthRequestResolver implements OAuth2AuthorizationRequestResolver {
+    // Extra param for each provider
+    public static final Map<Provider, Map<String, Object>> PROVIDER_EXTRA_PARAM = Map.of(
+            Provider.google, Map.of(
+                    "access_type", "offline"
+            )
+    );
 
     private final OAuth2AuthorizationRequestResolver defaultResolver;
 
@@ -76,12 +80,8 @@ public class ExtraParamAuthRequestResolver implements OAuth2AuthorizationRequest
         }
 
         // Additional parameters based on provider
-        Map<String, Object> additionalParameters = new HashMap<>();
         Provider provider = Provider.getProvider(getRegistrationId(request.getRedirectUri()));
-        switch (provider) {
-            case google -> additionalParameters.putAll(GoogleStorageService.OAuthExtraParam);
-            case microsoft, dropbox -> throw new RuntimeException("Not implemented");
-        }
+        Map<String, Object> additionalParameters = PROVIDER_EXTRA_PARAM.getOrDefault(provider, Map.of());
 
         return OAuth2AuthorizationRequest
                 .from(request)
@@ -90,7 +90,7 @@ public class ExtraParamAuthRequestResolver implements OAuth2AuthorizationRequest
     }
 
     /**
-     * Obtain the registration id using the redirect uri
+     * Get the registration id using the redirect uri
      *
      * @param redirectURI URI to inspect
      * @return registration id in the redirect URI.

@@ -8,6 +8,9 @@ import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
 import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
 import westwood222.cloud_alloc.exception.external.ExternalException;
 
+/**
+ * Implementation of this interface is capable of uploading, reading, and deleting Resource in a Cloud Storage
+ */
 public interface StorageService {
     /**
      * Upload a file to a cloud storage

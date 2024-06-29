@@ -18,7 +18,7 @@ public class SecurityConfig {
 
     public SecurityConfig(
             ClientRegistrationRepository clientRegistrationRepository,
-            @Qualifier("storageServiceManagerImpl") AuthenticationSuccessHandler handler
+            @Qualifier("storageWorkerRepository") AuthenticationSuccessHandler handler
     ) {
         this.handler = handler;
         this.authorizationRequestResolver = new ExtraParamAuthRequestResolver(clientRegistrationRepository);

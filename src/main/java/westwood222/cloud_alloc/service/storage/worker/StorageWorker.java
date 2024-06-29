@@ -1,10 +1,11 @@
-package westwood222.cloud_alloc.service.storage;
+package westwood222.cloud_alloc.service.storage.worker;
 
 import jakarta.annotation.Nonnull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import westwood222.cloud_alloc.model.Account;
+import westwood222.cloud_alloc.service.storage.StorageService;
 
 
 /**
@@ -14,11 +15,11 @@ import westwood222.cloud_alloc.model.Account;
 @Getter
 @RequiredArgsConstructor
 @AllArgsConstructor
-public abstract class AbstractStorageService implements StorageService, Comparable<AbstractStorageService> {
+public abstract class StorageWorker implements StorageService, Comparable<StorageWorker> {
     @Nonnull
-    protected final Account account;  // the account that this StorageService is referencing
+    protected final Account account;    // the account that this StorageWorker is referencing
 
-    protected long freeSpace;       // the current free space in the cloud storage specified by account
+    protected long freeSpace;           // the current free space in the cloud storage specified by account
 
     /**
      * Default ordering for service, which is ordered by available space in ascending order.
@@ -31,7 +32,7 @@ public abstract class AbstractStorageService implements StorageService, Comparab
      */
     @Override
     public int compareTo(
-            @Nonnull final AbstractStorageService otherStorageService
+            @Nonnull final StorageWorker otherStorageService
     ) {
         return Long.compare(this.getFreeSpace(), otherStorageService.getFreeSpace());
     }

@@ -24,7 +24,7 @@ import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Resource;
 import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.repository.ResourceRepository;
-import westwood222.cloud_alloc.service.storageManager.StorageServiceManager;
+import westwood222.cloud_alloc.service.storage.manager.StorageManager;
 
 import java.util.List;
 
@@ -35,7 +35,7 @@ public class ResourceServiceImpl implements ResourceService {
     private final ResourceRepository resourceRepository;
 
     private final StorageMapper storageMapper;
-    private final StorageServiceManager storageServiceManager;
+    private final StorageManager storageManager;
 
     /**
      * {@inheritDoc}
@@ -67,7 +67,7 @@ public class ResourceServiceImpl implements ResourceService {
 
         // Upload to Cloud
         StorageUploadRequest storageRequest = storageMapper.toStorageUploadRequest(file);
-        StorageUploadResponse storageResponse = storageServiceManager.upload(storageRequest);
+        StorageUploadResponse storageResponse = storageManager.upload(storageRequest);
 
         // Save metadata to DB
         ResourceProperty property = ResourceProperty.builder()
@@ -98,7 +98,7 @@ public class ResourceServiceImpl implements ResourceService {
                 resource.getAccount().getId(),
                 resource.getForeignId()
         );
-        StorageReadResponse storageResponse = storageServiceManager.read(storageRequest);
+        StorageReadResponse storageResponse = storageManager.read(storageRequest);
 
         return resourceMapper.toResourceReadResponse(resource, storageResponse.getResourceLink());
     }
@@ -118,7 +118,7 @@ public class ResourceServiceImpl implements ResourceService {
                 resource.getForeignId(),
                 request.isHardDelete()
         );
-        StorageDeleteResponse storageResponse = storageServiceManager.delete(storageRequest);
+        StorageDeleteResponse storageResponse = storageManager.delete(storageRequest);
 
         // Delete resource metadata
         resourceRepository.deleteById(request.getLocalId());

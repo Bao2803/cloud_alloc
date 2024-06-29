@@ -1,4 +1,4 @@
-package westwood222.cloud_alloc.service.storageManager;
+package westwood222.cloud_alloc.repository;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
@@ -7,16 +7,12 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.lang.NonNull;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClient;
 import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.stereotype.Service;
 import org.springframework.util.Assert;
-import org.springframework.web.multipart.MultipartFile;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
 import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
 import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
@@ -29,9 +25,8 @@ import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
-import westwood222.cloud_alloc.repository.AccountRepository;
-import westwood222.cloud_alloc.service.storage.AbstractStorageService;
-import westwood222.cloud_alloc.service.storage.GoogleStorageService;
+import westwood222.cloud_alloc.service.storage.worker.GoogleStorageWorker;
+import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -41,25 +36,36 @@ import java.time.ZoneId;
 import java.util.*;
 
 @Slf4j
-@Service
 @RequiredArgsConstructor
-public class StorageServiceManagerImpl implements StorageServiceManager {
-    private final OAuthProperty oAuthProperty;
+public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     private final StorageMapper storageMapper;
+    private final OAuthProperty oAuthProperty;
     private final AccountRepository accountRepository;
     private final OAuth2AuthorizedClientService authorizedClientService;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
 
     @Value("${spring.application.service.account.min-size-default}")
     private long MINIMUM_BYTE;
-    private Map<UUID, AbstractStorageService> serviceMap;
-    private TreeSet<AbstractStorageService> serviceTreeSet;
+    private Map<UUID, StorageWorker> serviceMap;
+    private TreeSet<StorageWorker> serviceTreeSet;
 
     @PostConstruct
     private void createStorageServices() {
         List<Account> accounts = accountRepository.findAll();
-        this.serviceMap = createStorageServiceMap(accounts);
+        this.serviceMap = createStorageServiceMap(accounts, storageMapper);
         this.serviceTreeSet = createStorageServiceTreeSet(serviceMap.values());
+    }
+
+    /**
+     * Save/update all account metadata in DB. The primary focus is updating account's free space
+     */
+    @PreDestroy
+    private void destroy() {
+        Account account;
+        for (StorageWorker service : serviceMap.values()) {
+            account = service.getAccount();
+            account.setAvailableSpace(service.getFreeSpace());
+            accountRepository.save(account);
+        }
     }
 
     /**
@@ -68,7 +74,7 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
      * @param account contains information for OAuth2.0
      * @return StorageService that holds the accessToken to the input account
      */
-    private AbstractStorageService createStorageService(
+    private StorageWorker createStorageService(
             Account account,
             StorageMapper storageMapper
     ) throws IOException {
@@ -77,16 +83,17 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
         return switch (provider) {
             case google -> {
                 OAuthProperty.ProviderSecret googleSecret = registeredProvider.get(provider.name());
-                yield new GoogleStorageService(account, googleSecret, storageMapper);
+                yield new GoogleStorageWorker(account, googleSecret, storageMapper);
             }
             case microsoft, dropbox -> throw new RuntimeException("Not implemented");
         };
     }
 
-    private Map<UUID, AbstractStorageService> createStorageServiceMap(
-            List<Account> accounts
+    private Map<UUID, StorageWorker> createStorageServiceMap(
+            List<Account> accounts,
+            StorageMapper storageMapper
     ) {
-        Map<UUID, AbstractStorageService> storageServiceMap = new HashMap<>(accounts.size());
+        Map<UUID, StorageWorker> storageServiceMap = new HashMap<>(accounts.size());
 
         for (Account account : accounts) {
             try {
@@ -102,34 +109,19 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
         return storageServiceMap;
     }
 
-    private TreeSet<AbstractStorageService> createStorageServiceTreeSet(Collection<AbstractStorageService> services) {
-        TreeSet<AbstractStorageService> treeSet = new TreeSet<>(Comparator.comparingLong(AbstractStorageService::getFreeSpace));
+    private TreeSet<StorageWorker> createStorageServiceTreeSet(
+            Collection<StorageWorker> services
+    ) {
+        TreeSet<StorageWorker> treeSet = new TreeSet<>(
+                Comparator.comparingLong(StorageWorker::getFreeSpace)
+        );
         treeSet.addAll(services);
         return treeSet;
     }
 
-    @Override
-    public @NonNull AbstractStorageService getServiceBySpace(long spaceNeed) throws InsufficientStorage {
-        AbstractStorageService queryObject = createQueryObject(spaceNeed);
-
-        AbstractStorageService service = serviceTreeSet.higher(queryObject);
-        try {
-            if (service == null || service.getFreeSpace() <= spaceNeed) {
-                throw new InsufficientStorage(String.format("Insufficient storage to upload file with %d", spaceNeed));
-            }
-        } catch (InsufficientStorage ie) {
-            throw ie;
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
-
-        serviceTreeSet.remove(service);
-        return service;
-    }
-
-    private AbstractStorageService createQueryObject(long spaceNeed) {
+    private StorageWorker createQueryObject(long spaceNeed) {
         spaceNeed = spaceNeed <= 0 ? MINIMUM_BYTE : spaceNeed;
-        return new AbstractStorageService(new Account(), spaceNeed) {
+        return new StorageWorker(new Account(), spaceNeed) {
             @Override
             public StorageUploadResponse upload(StorageUploadRequest request) {
                 return null;
@@ -147,14 +139,28 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
         };
     }
 
-    @Override
-    public boolean add(@NonNull AbstractStorageService service) {
-        return serviceTreeSet.add(service);
+    @Nonnull
+    public StorageWorker getServiceBySpace(long spaceNeed) throws InsufficientStorage {
+        StorageWorker queryObject = createQueryObject(spaceNeed);
+
+        StorageWorker service = serviceTreeSet.higher(queryObject);
+        try {
+            if (service == null || service.getFreeSpace() <= spaceNeed) {
+                throw new InsufficientStorage(String.format("Insufficient storage to upload file with %d", spaceNeed));
+            }
+        } catch (InsufficientStorage ie) {
+            throw ie;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        serviceTreeSet.remove(service);
+        return service;
     }
 
-    @Override
-    public @Nonnull AbstractStorageService getServiceById(UUID id) throws AccountNotFound {
-        AbstractStorageService storageService = serviceMap.get(id);
+    @Nonnull
+    public StorageWorker getServiceById(UUID id) throws AccountNotFound {
+        StorageWorker storageService = serviceMap.get(id);
         if (storageService == null) {
             throw new AccountNotFound("No account with id " + id);
         }
@@ -162,17 +168,9 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
         return storageService;
     }
 
-    /**
-     * Save/update all account metadata in DB. The primary focus is updating account's free space
-     */
-    @PreDestroy
-    private void destroy() {
-        Account account;
-        for (AbstractStorageService service : serviceMap.values()) {
-            account = service.getAccount();
-            account.setAvailableSpace(service.getFreeSpace());
-            accountRepository.save(account);
-        }
+    public void addService(StorageWorker storageService) {
+        serviceTreeSet.add(storageService);
+        serviceMap.putIfAbsent(storageService.getAccount().getId(), storageService);
     }
 
     /**
@@ -228,57 +226,15 @@ public class StorageServiceManagerImpl implements StorageServiceManager {
                 .build();
 
         // Initiate new driveService; update account's free space according to driveService's free space
-        AbstractStorageService service = createStorageService(account, storageMapper);
+        StorageWorker service = createStorageService(account, storageMapper);
         account.setAvailableSpace(service.getFreeSpace());
 
         // Keep track of the new driveService
-        add(service);
+        serviceTreeSet.add(service);
         serviceMap.put(account.getId(), service);
         accountRepository.save(account);
 
         // Redirect to a success page or handle the response as needed
         response.sendRedirect("/home");
-    }
-
-    @Override
-    public StorageUploadResponse upload(StorageUploadRequest request) {
-        MultipartFile file = request.getFile();
-        AbstractStorageService storageService = getServiceBySpace(file.getSize());
-        try {
-            StorageUploadRequest storageRequest = storageMapper.toStorageUploadRequest(file);
-            return storageService.upload(storageRequest);
-        } finally {
-            this.serviceTreeSet.add(storageService);
-        }
-    }
-
-    @Override
-    public StorageReadResponse read(StorageReadRequest request) {
-        AbstractStorageService service = getServiceById(request.getAccountId());
-        try {
-            StorageReadRequest storageRequest = storageMapper.toStorageReadRequest(
-                    null,
-                    request.getForeignId()
-            );
-            return service.read(storageRequest);
-        } finally {
-            this.serviceTreeSet.add(service);
-        }
-    }
-
-    @Override
-    public StorageDeleteResponse delete(StorageDeleteRequest request) {
-        AbstractStorageService service = getServiceById(request.getAccountId());
-        try {
-            StorageDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
-                    null,
-                    request.getForeignId(),
-                    request.isHardDelete()
-            );
-
-            return service.delete(storageRequest);
-        } finally {
-            this.serviceTreeSet.add(service);
-        }
     }
 }
