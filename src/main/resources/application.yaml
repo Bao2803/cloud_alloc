@@ -6,7 +6,7 @@ spring:
         min-size-default: 1024 # in bytes
 
   kafka:
-    bootstrap-servers: ${KAFKA_1}
+    bootstrap-servers: ${KAFKA}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer

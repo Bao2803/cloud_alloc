@@ -2,7 +2,9 @@ package westwood222.cloud_alloc;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.kafka.annotation.EnableKafka;
 
+@EnableKafka
 @SpringBootApplication
 public class CloudAllocApplication {
 
