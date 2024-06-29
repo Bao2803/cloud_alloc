@@ -8,6 +8,7 @@ import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequest
 import org.springframework.security.oauth2.client.web.OAuth2AuthorizationRequestResolver;
 import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.stereotype.Component;
+import westwood222.cloud_alloc.config.GoogleConfig;
 import westwood222.cloud_alloc.model.Provider;
 
 import java.util.Map;
@@ -20,9 +21,7 @@ import java.util.Map;
 public class ExtraParamAuthRequestResolver implements OAuth2AuthorizationRequestResolver {
     // Extra param for each provider
     public static final Map<Provider, Map<String, Object>> PROVIDER_EXTRA_PARAM = Map.of(
-            Provider.google, Map.of(
-                    "access_type", "offline"
-            )
+            Provider.google, GoogleConfig.OAUTH_PARAM
     );
 
     private final OAuth2AuthorizationRequestResolver defaultResolver;

@@ -14,10 +14,14 @@ import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 @Getter
 @Configuration
 public class GoogleConfig {
+    public static final Map<String, Object> OAUTH_PARAM = Map.of(
+            "access_type", "offline"
+    );
     public static final List<String> GOOGLE_SCOPE = Collections.singletonList(DriveScopes.DRIVE);
     public static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
     public static final HttpTransport HTTP_TRANSPORT;

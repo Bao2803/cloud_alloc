@@ -1,7 +1,6 @@
 package westwood222.cloud_alloc.repository;
 
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
-import org.springframework.stereotype.Repository;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
 import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
@@ -18,7 +17,6 @@ import java.util.UUID;
  * @see StorageWorker
  * @see westwood222.cloud_alloc.service.storage.manager.StorageManager
  */
-@Repository
 public interface StorageWorkerRepository extends AuthenticationSuccessHandler {
     @Nonnull
     StorageWorker getServiceBySpace(long spaceNeed) throws InsufficientStorage;
