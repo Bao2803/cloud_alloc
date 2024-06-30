@@ -35,7 +35,7 @@ public class SchedulerServiceImpl implements SchedulerService {
 
         // Also remove the task form the map at desired time
         threadPoolTaskScheduler.schedule(
-                new RemoveIfNeed(taskId, scheduledTasks),
+                () -> scheduledTasks.remove(taskId),
                 request.getDesiredTime()
         );
         return new CreateTaskResponse(taskId);
@@ -47,29 +47,5 @@ public class SchedulerServiceImpl implements SchedulerService {
         scheduledTasks.get(request.getTaskId()).cancel(false);
         scheduledTasks.remove(request.getTaskId());
         return new DeleteTaskResponse();
-    }
-
-    /**
-     * Simple {@code Runnable} that look into the {@code taskMap} and return the task with {@code taskId} if it exists
-     *
-     * @param taskId
-     * @param taskMap
-     */
-    private record RemoveIfNeed(UUID taskId, Map<UUID, ScheduledFuture<?>> taskMap) implements Runnable {
-        /**
-         * When an object implementing interface {@code Runnable} is used
-         * to create a thread, starting the thread causes the object's
-         * {@code run} method to be called in that separately executing
-         * thread.
-         * <p>
-         * The general contract of the method {@code run} is that it may
-         * take any action whatsoever.
-         *
-         * @see Thread#run()
-         */
-        @Override
-        public void run() {
-            taskMap.remove(taskId);
-        }
     }
 }
