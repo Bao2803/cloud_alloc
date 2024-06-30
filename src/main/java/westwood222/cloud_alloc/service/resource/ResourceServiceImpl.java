@@ -51,11 +51,12 @@ public class ResourceServiceImpl implements ResourceService {
 
         // Calculate next page and transform data to DTO
         int totalPage = page.getTotalPages();
+        int nextSize = page.getSize();
         int nextPage = totalPage == 0 ? 0 : (request.getPageable().getPageNumber() + 1) % totalPage;
         List<ResourceReadResponse> resources = page.getContent()
                 .stream().map(resourceMapper::resourceToResourceReadResponse).toList();
 
-        return resourceMapper.toSearchResponse(nextPage, totalPage, resources);
+        return resourceMapper.toSearchResponse(nextPage, nextSize, totalPage, resources);
     }
 
     /**
@@ -71,7 +72,7 @@ public class ResourceServiceImpl implements ResourceService {
 
         // Save metadata to DB
         ResourceProperty property = ResourceProperty.builder()
-                .name(file.getName())
+                .name(file.getOriginalFilename())
                 .mineType(file.getContentType())
                 .build();
         Resource resource = Resource.builder()

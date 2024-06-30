@@ -58,7 +58,7 @@ public class ResourceController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a new resource")
     ResponseDTO<ResourceUploadResponse> createResource(
-            @RequestParam("file") MultipartFile file
+            @RequestPart("file") MultipartFile file
     ) {
         ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(file);
         ResourceUploadResponse response = resourceService.upload(request);

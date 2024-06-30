@@ -30,9 +30,10 @@ public interface ResourceMapper {
     ResourceSearchRequest toSearchRequest(Pageable pageable, String filename, String mineType);
 
     @Mapping(source = "nextPage", target = "nextPage")
+    @Mapping(source = "nextSize", target = "nextSize")
     @Mapping(source = "totalPage", target = "totalPage")
     @Mapping(source = "resources", target = "resources")
-    ResourceSearchResponse toSearchResponse(int nextPage, int totalPage, List<ResourceReadResponse> resources);
+    ResourceSearchResponse toSearchResponse(int nextPage, int nextSize, int totalPage, List<ResourceReadResponse> resources);
 
     @Mapping(source = "resourceId", target = "resourceId")
     ResourceReadRequest toViewRequest(UUID resourceId);

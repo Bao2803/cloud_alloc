@@ -1,6 +1,7 @@
 package westwood222.cloud_alloc.service.storage.manager;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -21,10 +22,12 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class StorageManagerImpl implements StorageManager {
-
     private final StorageMapper storageMapper;
     private final StorageWorkerRepository serviceRepository;
     private final KafkaTemplate<String, JobCompleteEvent> kafkaTemplate;
+
+    @Value("${spring.application.noti.user-email}")
+    private String userEmail;                           // TODO: allow multi users and send email to the user's email
 
     @Override
     public StorageUploadResponse upload(StorageUploadRequest request) {
@@ -33,6 +36,8 @@ public class StorageManagerImpl implements StorageManager {
         try {
             StorageUploadRequest uploadRequest = storageMapper.toStorageUploadRequest(file);
             StorageUploadResponse uploadResponse = storageService.upload(uploadRequest);
+
+            // TODO: clean this shit up
             JobCompleteEvent jobCompleteEvent = new JobCompleteEvent();
             Job job = new Job();
             job.setOperation(
@@ -44,11 +49,13 @@ public class StorageManagerImpl implements StorageManager {
             );
             job.setStatus(true);
             jobCompleteEvent.setJobs(List.of(job));
-            jobCompleteEvent.setResourceOwnerEmail("phanquocbao2803@gmail.com");
+            jobCompleteEvent.setResourceOwnerEmail(userEmail);
             kafkaTemplate.send(
                     "job_complete",
                     jobCompleteEvent
             );
+            // TODO: clean this shit up
+
             return uploadResponse;
         } finally {
             serviceRepository.addService(storageService);

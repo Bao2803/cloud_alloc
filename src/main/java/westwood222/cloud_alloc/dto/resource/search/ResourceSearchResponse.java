@@ -8,6 +8,7 @@ import java.util.List;
 @Data
 public class ResourceSearchResponse {
     int nextPage;
+    int nextSize;
     int totalPage;
     List<ResourceReadResponse> resources;
 }

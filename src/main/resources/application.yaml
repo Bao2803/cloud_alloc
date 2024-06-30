@@ -1,9 +1,15 @@
 spring:
   application:
     name: cloud_alloc
-    service:
-      account:
-        min-size-default: 1024 # in bytes
+    core:
+      min-size-default: 1024          # in bytes
+    noti:
+      user-email: phan43@purdue.edu   # email to notify when a job completed
+  servlet:
+    multipart:
+      max-file-size: -1               # infinite (in MB)
+      max-request-size: -1            # infinite (in MB)
+      resolve-lazily: true
 
   kafka:
     bootstrap-servers: ${KAFKA}

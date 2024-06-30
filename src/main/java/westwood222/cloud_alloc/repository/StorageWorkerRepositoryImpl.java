@@ -45,7 +45,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     private final AccountRepository accountRepository;
     private final OAuth2AuthorizedClientService authorizedClientService;
 
-    @Value("${spring.application.service.account.min-size-default}")
+    @Value("${spring.application.core.min-size-default}")
     private long MINIMUM_BYTE;
     private Map<UUID, StorageWorker> serviceMap;
     private TreeSet<StorageWorker> serviceTreeSet;
