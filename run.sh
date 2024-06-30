@@ -1,1 +1,1 @@
-./gradlew build && docker-compose build && docker-compose up
+./gradlew build && docker-compose build && docker-compose up -d

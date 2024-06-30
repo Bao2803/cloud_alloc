@@ -26,4 +26,8 @@ public class Job {
             CREATE, MOVE, DELETE
         }
     }
+
+    public void test() {
+        System.out.println("HELLOOOOOOO");
+    }
 }

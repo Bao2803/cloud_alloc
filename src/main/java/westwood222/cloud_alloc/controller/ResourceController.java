@@ -27,14 +27,14 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/resource")
 public class ResourceController {
-    private final ResourceService resourceService;
     private final ResourceMapper resourceMapper;
+    private final ResourceService resourceService;
 
     @GetMapping
     @Operation(summary = "Search for resources")
     ResponseDTO<ResourceSearchResponse> getAllResources(
-            @RequestParam(value = "name", defaultValue = "=") String name,
-            @RequestParam(value = "type", defaultValue = "=") String mineType,
+            @RequestParam(value = "name", defaultValue = "") String name,
+            @RequestParam(value = "type", defaultValue = "") String mineType,
             @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mineType);
