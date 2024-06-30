@@ -44,8 +44,8 @@ public class ResourceServiceImpl implements ResourceService {
     public ResourceSearchResponse search(ResourceSearchRequest request) {
         // Search
         Page<Resource> page = resourceRepository.findAllByProperty_NameLikeOrProperty_MineTypeLike(
-                request.getResourceProperty().getName(),
-                request.getResourceProperty().getMineType(),
+                "%" + request.getResourceProperty().getName() + "%",
+                "%" + request.getResourceProperty().getMineType() + "%",
                 request.getPageable()
         );
 

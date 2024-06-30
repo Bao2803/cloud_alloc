@@ -6,6 +6,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import westwood222.cloud_alloc.dto.ResponseDTO;
@@ -32,8 +33,8 @@ public class ResourceController {
     @GetMapping
     @Operation(summary = "Search for resources")
     ResponseDTO<ResourceSearchResponse> getAllResources(
-            @RequestParam(value = "name", defaultValue = "%%") String name,
-            @RequestParam(value = "type", defaultValue = "%%") String mineType,
+            @RequestParam(value = "name", defaultValue = "=") String name,
+            @RequestParam(value = "type", defaultValue = "=") String mineType,
             @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
         ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mineType);
@@ -57,7 +58,7 @@ public class ResourceController {
                 .build();
     }
 
-    @PostMapping
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a new resource")
     ResponseDTO<ResourceUploadResponse> createResource(
