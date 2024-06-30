@@ -4,11 +4,22 @@ import lombok.Getter;
 
 @Getter
 public abstract class BaseException extends RuntimeException {
-    public BaseException(String message) {
-        super(message);
+    private final String code;
+
+    public BaseException(String code) {
+        this(code, "");
     }
 
-    public BaseException(String message, Throwable cause) {
+    public BaseException(String code, Throwable cause) {
+        this(code, null, cause);
+    }
+
+    public BaseException(String code, String message) {
+        this(code, message, null);
+    }
+
+    public BaseException(String code, String message, Throwable cause) {
         super(message, cause);
+        this.code = code;
     }
 }

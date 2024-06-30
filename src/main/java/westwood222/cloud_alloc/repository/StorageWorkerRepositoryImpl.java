@@ -81,13 +81,12 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
             StorageMapper storageMapper
     ) throws IOException {
         Provider provider = account.getProvider();
-        Map<String, OAuthProperty.ProviderSecret> registeredProvider = oAuthProperty.getRegistration();
         return switch (provider) {
-            case google -> {
-                OAuthProperty.ProviderSecret googleSecret = registeredProvider.get(provider.name());
+            case GOOGLE -> {
+                OAuthProperty.ProviderSecret googleSecret = oAuthProperty.getProviderSecret(provider);
                 yield new GoogleStorageWorker(account, googleSecret, storageMapper);
             }
-            case microsoft, dropbox -> throw new RuntimeException("Not implemented");
+            case MICROSOFT, DROPBOX -> throw new RuntimeException("Not implemented");
         };
     }
 
@@ -148,7 +147,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
         StorageWorker service = serviceTreeSet.higher(queryObject);
         try {
             if (service == null || service.getFreeSpace() <= spaceNeed) {
-                throw new InsufficientStorage(String.format("Insufficient storage to upload file with %d", spaceNeed));
+                throw new InsufficientStorage(spaceNeed);
             }
         } catch (InsufficientStorage ie) {
             throw ie;
@@ -164,7 +163,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     public StorageWorker getServiceById(UUID id) throws AccountNotFound {
         StorageWorker storageService = serviceMap.get(id);
         if (storageService == null) {
-            throw new AccountNotFound("No account with id " + id);
+            throw new AccountNotFound(id);
         }
         serviceTreeSet.remove(storageService);
         return storageService;

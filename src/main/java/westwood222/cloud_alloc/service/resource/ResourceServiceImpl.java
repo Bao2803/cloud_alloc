@@ -91,7 +91,7 @@ public class ResourceServiceImpl implements ResourceService {
     public ResourceReadResponse read(ResourceReadRequest request) {
         // Get resource metadata
         Resource resource = resourceRepository.findById(request.getResourceId())
-                .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getResourceId()));
+                .orElseThrow(() -> new ResourceNotFound(request.getResourceId()));
 
         // Get resource download link from cloud storage
         StorageReadRequest storageRequest = storageMapper.toStorageReadRequest(
@@ -110,7 +110,7 @@ public class ResourceServiceImpl implements ResourceService {
     public ResourceDeleteResponse delete(ResourceDeleteRequest request) {
         // Get resource metadata
         Resource resource = resourceRepository.findById(request.getLocalId())
-                .orElseThrow(() -> new ResourceNotFound("No resource with id " + request.getLocalId()));
+                .orElseThrow(() -> new ResourceNotFound(request.getLocalId()));
 
         // Delete resource from cloud storage
         StorageDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(

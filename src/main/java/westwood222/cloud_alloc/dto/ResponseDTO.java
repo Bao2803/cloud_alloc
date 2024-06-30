@@ -1,7 +1,5 @@
 package westwood222.cloud_alloc.dto;
 
-import lombok.Builder;
-import lombok.Data;
 import westwood222.cloud_alloc.exception.handler.ExceptionDTO;
 
 /**
@@ -11,9 +9,12 @@ import westwood222.cloud_alloc.exception.handler.ExceptionDTO;
  *
  * @param <T> any type that needed to be returned to the client.
  */
-@Data
-@Builder
-public class ResponseDTO<T> {
-    private T data;
-    private ExceptionDTO error;
+public record ResponseDTO<T>(T data, ExceptionDTO error) {
+    public static <T> ResponseDTO<T> success(T data) {
+        return new ResponseDTO<>(data, null);
+    }
+
+    public static <T> ResponseDTO<T> error(ExceptionDTO error) {
+        return new ResponseDTO<>(null, error);
+    }
 }

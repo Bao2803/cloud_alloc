@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @Configuration
-public class KafkaTopConfig {
+public class KafkaTopicConfig {
     @Bean
     public RecordMessageConverter multiTypeConverter() {
         StringJsonMessageConverter converter = new StringJsonMessageConverter();

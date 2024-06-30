@@ -21,7 +21,7 @@ import java.util.Map;
 public class ExtraParamAuthRequestResolver implements OAuth2AuthorizationRequestResolver {
     // Extra param for each provider
     public static final Map<Provider, Map<String, Object>> PROVIDER_EXTRA_PARAM = Map.of(
-            Provider.google, GoogleConfig.OAUTH_PARAM
+            Provider.GOOGLE, GoogleConfig.OAUTH_PARAM
     );
 
     private final OAuth2AuthorizationRequestResolver defaultResolver;

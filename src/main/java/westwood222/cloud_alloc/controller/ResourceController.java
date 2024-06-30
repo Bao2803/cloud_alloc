@@ -40,9 +40,7 @@ public class ResourceController {
         ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mineType);
         ResourceSearchResponse response = resourceService.search(request);
 
-        return ResponseDTO.<ResourceSearchResponse>builder()
-                .data(response)
-                .build();
+        return ResponseDTO.success(response);
     }
 
     @GetMapping("/{resourceId}")
@@ -53,9 +51,7 @@ public class ResourceController {
         ResourceReadRequest request = resourceMapper.toViewRequest(resourceId);
         ResourceReadResponse response = resourceService.read(request);
 
-        return ResponseDTO.<ResourceReadResponse>builder()
-                .data(response)
-                .build();
+        return ResponseDTO.success(response);
     }
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
@@ -67,9 +63,7 @@ public class ResourceController {
         ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(file);
         ResourceUploadResponse response = resourceService.upload(request);
 
-        return ResponseDTO.<ResourceUploadResponse>builder()
-                .data(response)
-                .build();
+        return ResponseDTO.success(response);
     }
 
     @DeleteMapping("/{resourceId}")
@@ -81,8 +75,6 @@ public class ResourceController {
         ResourceDeleteRequest request = resourceMapper.toResourceDeleteRequest(resourceId, isHardDelete);
         ResourceDeleteResponse response = resourceService.delete(request);
 
-        return ResponseDTO.<ResourceDeleteResponse>builder()
-                .data(response)
-                .build();
+        return ResponseDTO.success(response);
     }
 }

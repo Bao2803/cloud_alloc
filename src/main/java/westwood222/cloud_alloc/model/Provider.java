@@ -7,14 +7,14 @@ package westwood222.cloud_alloc.model;
  * using {@link org.springframework.security.oauth2.client.registration.ClientRegistrationRepository}
  */
 public enum Provider {
-    google,
-    microsoft,
-    dropbox,
+    GOOGLE,
+    MICROSOFT,
+    DROPBOX,
     ;
 
     public static Provider getProvider(String provider) throws IllegalArgumentException {
         try {
-            return Provider.valueOf(provider);
+            return Provider.valueOf(provider.trim().toLowerCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Unsupported provider", e);
         }

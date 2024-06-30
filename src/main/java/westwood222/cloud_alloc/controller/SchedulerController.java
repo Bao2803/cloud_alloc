@@ -22,9 +22,7 @@ public class SchedulerController {
             @RequestBody CreateTaskRequest request
     ) {
         CreateTaskResponse response = schedulerService.schedule(request);
-        return ResponseDTO.<CreateTaskResponse>builder()
-                .data(response)
-                .build();
+        return ResponseDTO.success(response);
     }
 
     @DeleteMapping("/{taskId}")
@@ -32,8 +30,6 @@ public class SchedulerController {
             @PathVariable UUID taskId
     ) {
         DeleteTaskResponse response = schedulerService.cancel(new DeleteTaskRequest(taskId));
-        return ResponseDTO.<DeleteTaskResponse>builder()
-                .data(response)
-                .build();
+        return ResponseDTO.success(response);
     }
 }
