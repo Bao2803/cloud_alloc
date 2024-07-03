@@ -32,6 +32,8 @@ services:
     image: bitnami/kafka:latest
     ports:
       - 9092:9092
+    volumes:
+      - kafka-data:/bitnami/kafka
     environment:
       - KAFKA_CFG_NODE_ID=0
       - KAFKA_CFG_PROCESS_ROLES=controller,broker
@@ -42,3 +44,4 @@ services:
 
 volumes:
   cloud_alloc-data:
+  kafka-data:
