@@ -68,6 +68,12 @@ spring:
             enable: true
             required: true
 
+minio:
+  host: ${MINIO_HOST}
+  port: ${MINIO_PORT}
+  access: ${MINIO_ROOT_USER}
+  password: ${MINIO_ROOT_PASSWORD}
+
 springdoc:
   swagger-ui:
     operationsSorter: method
