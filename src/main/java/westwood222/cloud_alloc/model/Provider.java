@@ -14,7 +14,7 @@ public enum Provider {
 
     public static Provider getProvider(String provider) throws IllegalArgumentException {
         try {
-            return Provider.valueOf(provider.trim().toLowerCase());
+            return Provider.valueOf(provider.trim().toUpperCase());
         } catch (IllegalArgumentException e) {
             throw new IllegalArgumentException("Unsupported provider", e);
         }
