@@ -36,15 +36,8 @@ public class MinIoConfig {
 
     @Bean
     public MinioClient minioClient() {
-        return MinioClient.builder()
-                .endpoint(HOST, PORT, false)
-                .credentials(ACCESS, PASSWORD)
-                .build();
-    }
-
-    @Bean(name = "minioAccount")
-    public Account minioAccount() {
-        return accountRepository
+        // Create a new MinIO account if needed
+        accountRepository
                 .findFirstByProvider(Provider.MINIO)
                 .orElseGet(
                         () -> {
@@ -57,5 +50,9 @@ public class MinIoConfig {
                             return accountRepository.save(minioAccount);
                         }
                 );
+        return MinioClient.builder()
+                .endpoint(HOST, PORT, false)
+                .credentials(ACCESS, PASSWORD)
+                .build();
     }
 }
