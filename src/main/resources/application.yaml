@@ -2,13 +2,20 @@ spring:
   application:
     name: cloud_alloc
     core:
-      min-size-default: 1024          # in bytes
+      min-size-default: 1024              # in bytes
+      fragmentation-cron: "0 0 * * * *"   # every day at midnight
     noti:
-      user-email: phan43@purdue.edu   # email to notify when a job completed
+      user-email: phan43@purdue.edu       # email to notify when a job completed
+
+  task:
+    scheduling:
+      pool:
+        size: 5
+
   servlet:
     multipart:
-      max-file-size: -1               # infinite (in MB)
-      max-request-size: -1            # infinite (in MB)
+      max-file-size: -1                   # infinite (in MB)
+      max-request-size: -1                # infinite (in MB)
       resolve-lazily: true
 
   kafka:
@@ -72,7 +79,6 @@ springdoc:
   swagger-ui:
     operationsSorter: method
     try-it-out-enabled: true
-  writer-with-order-by-keys: true
 
 logging:
   level:

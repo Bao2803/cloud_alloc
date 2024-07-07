@@ -10,12 +10,12 @@ import com.google.api.services.drive.Drive;
 import com.google.api.services.drive.model.About;
 import com.google.api.services.drive.model.File;
 import westwood222.cloud_alloc.config.GoogleConfig;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
-import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
-import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
+import westwood222.cloud_alloc.dto.storage.worker.delete.WorkerDeleteRequest;
+import westwood222.cloud_alloc.dto.storage.worker.delete.WorkerDeleteResponse;
+import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadRequest;
+import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadResponse;
+import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
+import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.external.GoogleException;
 import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
@@ -26,7 +26,7 @@ import javax.annotation.Nonnull;
 import java.io.IOException;
 import java.net.FileNameMap;
 import java.net.URLConnection;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 public class GoogleStorageWorker extends StorageWorker {
     private final Drive driveService;
@@ -94,15 +94,20 @@ public class GoogleStorageWorker extends StorageWorker {
     }
 
     @Override
-    public StorageUploadResponse upload(StorageUploadRequest request) {
+    public long getFreeSpace() {
+        return this.freeSpace;
+    }
+
+    @Override
+    public WorkerUploadResponse upload(WorkerUploadRequest request) {
         String name = request.getFile().getOriginalFilename();
         try {
-            String mineType = fileNameMap.getContentTypeFor(request.getFile().getOriginalFilename());
-            InputStreamContent mediaContent = new InputStreamContent(mineType, request.getFile().getInputStream());
+            String mimeType = fileNameMap.getContentTypeFor(name);
+            InputStreamContent mediaContent = new InputStreamContent(mimeType, request.getFile().getInputStream());
             File result = driveService.files()
                     .create(
                             new File().setName(name)
-                                    .setMimeType(mineType),
+                                    .setMimeType(mimeType),
                             mediaContent
                     )
                     .execute();
@@ -110,7 +115,7 @@ public class GoogleStorageWorker extends StorageWorker {
 
             ResourceProperty property = ResourceProperty.builder()
                     .name(result.getName())
-                    .mineType(result.getMimeType())
+                    .mimeType(result.getMimeType())
                     .build();
             return storageMapper.toStorageUploadResponse(
                     property,
@@ -123,7 +128,7 @@ public class GoogleStorageWorker extends StorageWorker {
     }
 
     @Override
-    public StorageReadResponse read(StorageReadRequest request) {
+    public WorkerReadResponse read(WorkerReadRequest request) {
         try {
             File result = driveService.files()
                     .get(request.getForeignId())
@@ -132,7 +137,7 @@ public class GoogleStorageWorker extends StorageWorker {
 
             ResourceProperty property = ResourceProperty.builder()
                     .name(result.getName())
-                    .mineType(result.getMimeType())
+                    .mimeType(result.getMimeType())
                     .build();
             return storageMapper.toStorageReadResponse(property, result.getWebViewLink());
         } catch (IOException e) {
@@ -141,11 +146,11 @@ public class GoogleStorageWorker extends StorageWorker {
     }
 
     @Override
-    public StorageDeleteResponse delete(StorageDeleteRequest request) {
+    public WorkerDeleteResponse delete(WorkerDeleteRequest request) {
         try {
             if (request.isHardDelete()) {
                 driveService.files().delete(request.getForeignId()).execute();
-                return storageMapper.toStorageDeleteResponse(LocalDateTime.now());
+                return WorkerDeleteResponse.builder().deleteDate(LocalDate.now()).build();
             }
 
             File temp = new File();
@@ -153,8 +158,8 @@ public class GoogleStorageWorker extends StorageWorker {
             driveService.files().update(request.getForeignId(), temp).execute();
 
             // Google removes trash items after 30 days: https://developers.google.com/drive/api/guides/delete
-            int maxTrashTime = 30;
-            return storageMapper.toStorageDeleteResponse(LocalDateTime.now().plusDays(maxTrashTime));
+            final int MAX_TRASH_TIME = 30;
+            return WorkerDeleteResponse.builder().deleteDate(LocalDate.now().plusDays(MAX_TRASH_TIME)).build();
         } catch (IOException e) {
             throw new GoogleException(e);
         }

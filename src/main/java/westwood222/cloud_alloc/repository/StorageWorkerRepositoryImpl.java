@@ -14,12 +14,12 @@ import org.springframework.security.oauth2.client.OAuth2AuthorizedClientService;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.util.Assert;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
-import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
-import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
+import westwood222.cloud_alloc.dto.storage.worker.delete.WorkerDeleteRequest;
+import westwood222.cloud_alloc.dto.storage.worker.delete.WorkerDeleteResponse;
+import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadRequest;
+import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadResponse;
+import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
+import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
 import westwood222.cloud_alloc.mapper.StorageMapper;
@@ -124,19 +124,26 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
         spaceNeed = spaceNeed <= 0 ? MINIMUM_BYTE : spaceNeed;
         return new StorageWorker(new Account(), spaceNeed) {
             @Override
-            public StorageUploadResponse upload(StorageUploadRequest request) {
+            public long getFreeSpace() {
+                return this.freeSpace;
+            }
+
+            @Override
+            public WorkerUploadResponse upload(WorkerUploadRequest request) {
                 return null;
             }
 
             @Override
-            public StorageReadResponse read(StorageReadRequest request) {
+            public WorkerReadResponse read(WorkerReadRequest request) {
                 return null;
             }
 
             @Override
-            public StorageDeleteResponse delete(StorageDeleteRequest request) {
+            public WorkerDeleteResponse delete(WorkerDeleteRequest request) {
                 return null;
             }
+
+
         };
     }
 

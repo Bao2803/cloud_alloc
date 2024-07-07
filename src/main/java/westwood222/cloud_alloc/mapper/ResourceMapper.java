@@ -14,8 +14,8 @@ import westwood222.cloud_alloc.dto.resource.search.ResourceSearchRequest;
 import westwood222.cloud_alloc.dto.resource.search.ResourceSearchResponse;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadRequest;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
+import westwood222.cloud_alloc.dto.storage.manager.delete.ManagerDeleteResponse;
+import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.model.Resource;
 
 import java.util.List;
@@ -26,8 +26,8 @@ import java.util.UUID;
 public interface ResourceMapper {
     @Mapping(source = "pageable", target = "pageable")
     @Mapping(source = "filename", target = "resourceProperty.name", defaultValue = "%")
-    @Mapping(source = "mineType", target = "resourceProperty.mineType", defaultValue = "%")
-    ResourceSearchRequest toSearchRequest(Pageable pageable, String filename, String mineType);
+    @Mapping(source = "mimeType", target = "resourceProperty.mimeType", defaultValue = "%")
+    ResourceSearchRequest toSearchRequest(Pageable pageable, String filename, String mimeType);
 
     @Mapping(source = "nextPage", target = "nextPage")
     @Mapping(source = "nextSize", target = "nextSize")
@@ -38,13 +38,13 @@ public interface ResourceMapper {
     @Mapping(source = "resourceId", target = "resourceId")
     ResourceReadRequest toViewRequest(UUID resourceId);
 
-    @Mapping(source = "file", target = "file")
-    ResourceUploadRequest toResourceUploadRequest(MultipartFile file);
+    @Mapping(source = "files", target = "files")
+    ResourceUploadRequest toResourceUploadRequest(MultipartFile[] files);
 
     @Mapping(source = "localId", target = "resourceId")
     @Mapping(source = "storageResponse.provider", target = "provider")
     @Mapping(source = "storageResponse.username", target = "username")
-    ResourceUploadResponse toResourceUploadResponse(UUID localId, StorageUploadResponse storageResponse);
+    ResourceUploadResponse.File toResourceUploadResponse(UUID localId, WorkerUploadResponse storageResponse);
 
     @Mapping(source = "localId", target = "localId")
     @Mapping(source = "isHardDelete", target = "hardDelete")
@@ -55,7 +55,7 @@ public interface ResourceMapper {
     @Mapping(source = "resource.account.username", target = "username")
     @Mapping(source = "resource.account.provider", target = "provider")
     @Mapping(source = "resource.property.name", target = "resourceName")
-    @Mapping(source = "resource.property.mineType", target = "resourceMineType")
+    @Mapping(source = "resource.property.mimeType", target = "resourceMimeType")
     ResourceReadResponse resourceToResourceReadResponse(Resource resource);
 
     @Mapping(source = "resource.id", target = "resourceId")
@@ -63,9 +63,9 @@ public interface ResourceMapper {
     @Mapping(source = "resource.account.username", target = "username")
     @Mapping(source = "resource.account.provider", target = "provider")
     @Mapping(source = "resource.property.name", target = "resourceName")
-    @Mapping(source = "resource.property.mineType", target = "resourceMineType")
+    @Mapping(source = "resource.property.mimeType", target = "resourceMimeType")
     ResourceReadResponse toResourceReadResponse(Resource resource, String resourceLink);
 
     @Mapping(source = "deleteDate", target = "deleteDate")
-    ResourceDeleteResponse storageDeleteResponsetoResourceDeleteResponse(StorageDeleteResponse storageResponse);
+    ResourceDeleteResponse storageDeleteResponsetoResourceDeleteResponse(ManagerDeleteResponse storageResponse);
 }

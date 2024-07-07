@@ -15,9 +15,12 @@ import java.io.Serializable;
 @NoArgsConstructor
 @AllArgsConstructor
 public class ResourceProperty implements Serializable {
-    @Column(name = "mine_type", nullable = false)
-    private String mineType;
+    @Column(name = "mime_type", nullable = false)
+    private String mimeType;
 
     @Column(name = "name", nullable = false)
     private String name;
+
+    @Column(name = "size", nullable = false)
+    private Long size;
 }

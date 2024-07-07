@@ -3,6 +3,7 @@ package westwood222.cloud_alloc.config;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.annotation.EnableKafka;
 import org.springframework.kafka.support.converter.RecordMessageConverter;
 import org.springframework.kafka.support.converter.StringJsonMessageConverter;
 import org.springframework.kafka.support.mapping.DefaultJackson2JavaTypeMapper;
@@ -12,6 +13,7 @@ import westwood222.cloud_alloc.dto.noti.JobCompleteEvent;
 import java.util.HashMap;
 import java.util.Map;
 
+@EnableKafka
 @Configuration
 public class KafkaTopicConfig {
     @Bean

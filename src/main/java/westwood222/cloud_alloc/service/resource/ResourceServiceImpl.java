@@ -2,8 +2,8 @@ package westwood222.cloud_alloc.service.resource;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
 import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteRequest;
 import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteResponse;
 import westwood222.cloud_alloc.dto.resource.read.ResourceReadRequest;
@@ -12,12 +12,13 @@ import westwood222.cloud_alloc.dto.resource.search.ResourceSearchRequest;
 import westwood222.cloud_alloc.dto.resource.search.ResourceSearchResponse;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadRequest;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteRequest;
-import westwood222.cloud_alloc.dto.storage.delete.StorageDeleteResponse;
-import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
-import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
-import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
+import westwood222.cloud_alloc.dto.storage.manager.delete.ManagerDeleteRequest;
+import westwood222.cloud_alloc.dto.storage.manager.delete.ManagerDeleteResponse;
+import westwood222.cloud_alloc.dto.storage.manager.read.ManagerReadRequest;
+import westwood222.cloud_alloc.dto.storage.manager.read.ManagerReadResponse;
+import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadRequest;
+import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadResponse;
+import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.internal.ResourceNotFound;
 import westwood222.cloud_alloc.mapper.ResourceMapper;
 import westwood222.cloud_alloc.mapper.StorageMapper;
@@ -26,6 +27,10 @@ import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.repository.ResourceRepository;
 import westwood222.cloud_alloc.service.storage.manager.StorageManager;
 
+import java.io.InputStream;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -43,9 +48,9 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     public ResourceSearchResponse search(ResourceSearchRequest request) {
         // Search
-        Page<Resource> page = resourceRepository.findAllByProperty_NameLikeOrProperty_MineTypeLike(
+        Page<Resource> page = resourceRepository.findAllByProperty_NameLikeOrProperty_MimeTypeLike(
                 "%" + request.getResourceProperty().getName() + "%",
-                "%" + request.getResourceProperty().getMineType() + "%",
+                "%" + request.getResourceProperty().getMimeType() + "%",
                 request.getPageable()
         );
 
@@ -64,25 +69,28 @@ public class ResourceServiceImpl implements ResourceService {
      */
     @Override
     public ResourceUploadResponse upload(ResourceUploadRequest request) {
-        MultipartFile file = request.getFile();
-
         // Upload to Cloud
-        StorageUploadRequest storageRequest = storageMapper.toStorageUploadRequest(file);
-        StorageUploadResponse storageResponse = storageManager.upload(storageRequest);
+        ManagerUploadRequest storageRequest = storageMapper.toStorageUploadRequest(request.getFiles());
+        ManagerUploadResponse storageResponse = storageManager.upload(storageRequest);
 
         // Save metadata to DB
-        ResourceProperty property = ResourceProperty.builder()
-                .name(file.getOriginalFilename())
-                .mineType(file.getContentType())
-                .build();
-        Resource resource = Resource.builder()
-                .account(storageResponse.getAccount())
-                .foreignId(storageResponse.getForeignId())
-                .property(property)
-                .build();
-        resource = resourceRepository.save(resource);
+        ResourceUploadResponse response = new ResourceUploadResponse();
+        response.setFiles(new ArrayList<>());
+        for (WorkerUploadResponse file : storageResponse.getFiles()) {
+            ResourceProperty property = ResourceProperty.builder()
+                    .name(file.getName())
+                    .mimeType(file.getMimeType())
+                    .build();
+            Resource resource = Resource.builder()
+                    .account(file.getAccount())
+                    .foreignId(file.getForeignId())
+                    .property(property)
+                    .build();
+            resource = resourceRepository.save(resource);
+            response.getFiles().add(resourceMapper.toResourceUploadResponse(resource.getId(), file));
+        }
 
-        return resourceMapper.toResourceUploadResponse(resource.getId(), storageResponse);
+        return response;
     }
 
     /**
@@ -95,13 +103,30 @@ public class ResourceServiceImpl implements ResourceService {
                 .orElseThrow(() -> new ResourceNotFound(request.getResourceId()));
 
         // Get resource download link from cloud storage
-        StorageReadRequest storageRequest = storageMapper.toStorageReadRequest(
+        ManagerReadRequest storageRequest = storageMapper.toStorageReadRequest(
                 resource.getAccount().getId(),
                 resource.getForeignId()
         );
-        StorageReadResponse storageResponse = storageManager.read(storageRequest);
+        ManagerReadResponse storageResponse = storageManager.read(storageRequest);
 
         return resourceMapper.toResourceReadResponse(resource, storageResponse.getResourceLink());
+    }
+
+    @Scheduled(cron = "${spring.application.core.fragmentation-cron}")
+    public void defragmentation() {
+        Instant now = Instant.now();
+        List<Resource> resources = resourceRepository.findAllByUpdatedAtBetween(
+                now.minus(1, ChronoUnit.DAYS),
+                now
+        );
+        resources.sort((a, b) -> Math.toIntExact(a.getProperty().getSize() - b.getProperty().getSize()));
+
+        // Get the list of object from MinIO.
+        // Assuming that MinIO is keeping the most recent state of the new files as well as the update files
+        List<InputStream> files = List.of();
+        for (InputStream stream : files) {
+            // upload file using manager
+        }
     }
 
     /**
@@ -114,12 +139,12 @@ public class ResourceServiceImpl implements ResourceService {
                 .orElseThrow(() -> new ResourceNotFound(request.getLocalId()));
 
         // Delete resource from cloud storage
-        StorageDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
+        ManagerDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
                 resource.getAccount().getId(),
                 resource.getForeignId(),
                 request.isHardDelete()
         );
-        StorageDeleteResponse storageResponse = storageManager.delete(storageRequest);
+        ManagerDeleteResponse storageResponse = storageManager.delete(storageRequest);
 
         // Delete resource metadata
         resourceRepository.deleteById(request.getLocalId());

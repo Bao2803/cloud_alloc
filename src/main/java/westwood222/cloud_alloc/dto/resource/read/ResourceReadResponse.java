@@ -12,5 +12,5 @@ public class ResourceReadResponse {
     private Provider provider;
     private String resourceLink;
     private String resourceName;
-    private String resourceMineType;
+    private String resourceMimeType;
 }

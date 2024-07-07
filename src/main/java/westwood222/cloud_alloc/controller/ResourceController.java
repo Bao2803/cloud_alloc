@@ -2,6 +2,7 @@ package westwood222.cloud_alloc.controller;
 
 import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
+import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.web.PageableDefault;
@@ -34,10 +35,10 @@ public class ResourceController {
     @Operation(summary = "Search for resources")
     ResponseDTO<ResourceSearchResponse> getAllResources(
             @RequestParam(value = "name", defaultValue = "") String name,
-            @RequestParam(value = "type", defaultValue = "") String mineType,
-            @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
+            @RequestParam(value = "type", defaultValue = "") String mimeType,
+            @ParameterObject @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mineType);
+        ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mimeType);
         ResourceSearchResponse response = resourceService.search(request);
 
         return ResponseDTO.success(response);
@@ -58,9 +59,9 @@ public class ResourceController {
     @ResponseStatus(HttpStatus.CREATED)
     @Operation(summary = "Create a new resource")
     ResponseDTO<ResourceUploadResponse> createResource(
-            @RequestPart("file") MultipartFile file
+            @RequestPart("files") MultipartFile[] files
     ) {
-        ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(file);
+        ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(files);
         ResourceUploadResponse response = resourceService.upload(request);
 
         return ResponseDTO.success(response);
