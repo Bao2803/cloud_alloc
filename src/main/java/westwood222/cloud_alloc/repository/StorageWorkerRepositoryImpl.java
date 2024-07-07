@@ -1,5 +1,6 @@
 package westwood222.cloud_alloc.repository;
 
+import io.minio.MinioClient;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.servlet.http.HttpServletRequest;
@@ -26,6 +27,7 @@ import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
+import westwood222.cloud_alloc.service.storage.MinIoService;
 import westwood222.cloud_alloc.service.storage.worker.GoogleStorageWorker;
 import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
 
@@ -40,6 +42,7 @@ import java.util.*;
 @Configuration
 @RequiredArgsConstructor
 public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
+    private final MinioClient minioClient;
     private final StorageMapper storageMapper;
     private final OAuthProperty oAuthProperty;
     private final AccountRepository accountRepository;
@@ -86,6 +89,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
                 OAuthProperty.ProviderSecret googleSecret = oAuthProperty.getProviderSecret(provider);
                 yield new GoogleStorageWorker(account, googleSecret, storageMapper);
             }
+            case MINIO -> new MinIoService(account, minioClient);
             case MICROSOFT, DROPBOX -> throw new RuntimeException("Not implemented");
         };
     }
@@ -142,8 +146,6 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
             public WorkerDeleteResponse delete(WorkerDeleteRequest request) {
                 return null;
             }
-
-
         };
     }
 
