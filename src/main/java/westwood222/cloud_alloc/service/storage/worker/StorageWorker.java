@@ -4,6 +4,7 @@ import jakarta.annotation.Nonnull;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
+import lombok.Setter;
 import westwood222.cloud_alloc.dto.storage.worker.delete.WorkerDeleteRequest;
 import westwood222.cloud_alloc.dto.storage.worker.delete.WorkerDeleteResponse;
 import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadRequest;
@@ -25,6 +26,7 @@ public abstract class StorageWorker implements Comparable<StorageWorker> {
     @Nonnull
     protected final Account account;    // the account that this StorageWorker is referencing
 
+    @Setter // temp for frag demo purpose; TODO: remove
     protected long freeSpace;           // the current free space in the cloud storage specified by account
 
     public abstract long getFreeSpace();

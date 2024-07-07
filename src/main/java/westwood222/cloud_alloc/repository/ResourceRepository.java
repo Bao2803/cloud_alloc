@@ -7,7 +7,7 @@ import org.springframework.stereotype.Repository;
 import westwood222.cloud_alloc.model.Resource;
 
 import java.time.Instant;
-import java.util.List;
+import java.util.ArrayDeque;
 import java.util.UUID;
 
 @Repository
@@ -18,5 +18,5 @@ public interface ResourceRepository extends JpaRepository<Resource, UUID> {
             Pageable pageable
     );
 
-    List<Resource> findAllByUpdatedAtBetween(Instant start, Instant end);
+    ArrayDeque<Resource> findAllByUpdatedAtBetweenOrderByProperty_SizeAsc(Instant start, Instant end);
 }

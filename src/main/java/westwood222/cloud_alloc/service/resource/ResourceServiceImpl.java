@@ -1,6 +1,7 @@
 package westwood222.cloud_alloc.service.resource;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,17 +23,21 @@ import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.internal.ResourceNotFound;
 import westwood222.cloud_alloc.mapper.ResourceMapper;
 import westwood222.cloud_alloc.mapper.StorageMapper;
+import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.model.Resource;
 import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.repository.ResourceRepository;
+import westwood222.cloud_alloc.repository.StorageWorkerRepository;
 import westwood222.cloud_alloc.service.storage.manager.StorageManager;
+import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
 
-import java.io.InputStream;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ResourceServiceImpl implements ResourceService {
@@ -41,6 +46,8 @@ public class ResourceServiceImpl implements ResourceService {
 
     private final StorageMapper storageMapper;
     private final StorageManager storageManager;
+
+    private final StorageWorkerRepository workerRepository;     // temp for demo purpose; should call through manager
 
     /**
      * {@inheritDoc}
@@ -114,18 +121,68 @@ public class ResourceServiceImpl implements ResourceService {
 
     @Scheduled(cron = "${spring.application.core.fragmentation-cron}")
     public void defragmentation() {
+        // Get all files that are updated today
         Instant now = Instant.now();
-        List<Resource> resources = resourceRepository.findAllByUpdatedAtBetween(
+        ArrayDeque<Resource> resources = resourceRepository.findAllByUpdatedAtBetweenOrderByProperty_SizeAsc(
                 now.minus(1, ChronoUnit.DAYS),
                 now
         );
-        resources.sort((a, b) -> Math.toIntExact(a.getProperty().getSize() - b.getProperty().getSize()));
 
-        // Get the list of object from MinIO.
-        // Assuming that MinIO is keeping the most recent state of the new files as well as the update files
-        List<InputStream> files = List.of();
-        for (InputStream stream : files) {
-            // upload file using manager
+        // Upload alternatively the largest and smallest file to the account with less space
+        // If an InsufficientStorage is thrown,
+        // try to upload as much file as possible from smallest to largest
+        Resource curr;
+        StorageWorker worker = null;
+        boolean isFront = false;
+        while (!resources.isEmpty()) {
+            // Obtain a resource alternatively between the largest file and smallest file
+            // Group them into large/small block to decrease level of fragmentation
+            if (isFront) {
+                curr = resources.removeFirst();
+            } else {
+                curr = resources.removeLast();
+            }
+            isFront = !isFront;
+
+            // Logic to get the actual file content here
+            // We will get all files from MinIO,
+            // as well as modified files on Google Drive using https://developers.google.com/drive/api/guides/push
+
+            // Move a file to the account with less free space, but still has enough storage to handle this file
+            try {
+                worker = workerRepository.getServiceBySpace(curr.getProperty().getSize());
+                log.info("Move {} to {}", curr.getProperty(), worker.getAccount());
+
+                // decrease the space
+                // this will be done automatically by the worker,
+                // but we do it here manually for demo purpose
+                worker.setFreeSpace(worker.getFreeSpace() - curr.getProperty().getSize());
+            } catch (Exception e) {
+                // catch exception if any; we don't want to stop the batch if there is an error on 1 file
+                // save the file into a queue or sth for retry
+                log.error("Error moving {}; continue bath process", curr.getProperty());
+                continue;
+            } finally {
+                if (worker != null) workerRepository.addService(worker);
+            }
+
+            // Only remove file if the file successfully moved to the new destination
+            try {
+                worker = workerRepository.getServiceById(curr.getAccount().getId());
+                log.info("Remove file from {}", worker.getAccount());
+
+                // increase the space
+                // this will be done automatically by the worker,
+                // but we do it here manually for demo purpose
+                if (curr.getAccount().getProvider() != Provider.MINIO) {
+                    worker.setFreeSpace(worker.getFreeSpace() + curr.getProperty().getSize());
+                }
+            } catch (Exception e) {
+                log.error("Failed to remove file {} from {}", curr.getProperty(), worker.getAccount());
+                // move the remove action into a queue for later retry
+            } finally {
+                workerRepository.addService(worker);
+            }
         }
     }
 
