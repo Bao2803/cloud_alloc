@@ -19,8 +19,13 @@ import westwood222.cloud_alloc.dto.resource.search.ResourceSearchRequest;
 import westwood222.cloud_alloc.dto.resource.search.ResourceSearchResponse;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadRequest;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
+import westwood222.cloud_alloc.dto.storage.read.StorageReadRequest;
+import westwood222.cloud_alloc.dto.storage.read.StorageReadResponse;
+import westwood222.cloud_alloc.dto.storage.upload.StorageUploadRequest;
+import westwood222.cloud_alloc.dto.storage.upload.StorageUploadResponse;
 import westwood222.cloud_alloc.mapper.ResourceMapper;
 import westwood222.cloud_alloc.service.resource.ResourceService;
+import westwood222.cloud_alloc.service.storage.MinIoService;
 
 import java.util.UUID;
 
@@ -30,6 +35,7 @@ import java.util.UUID;
 public class ResourceController {
     private final ResourceMapper resourceMapper;
     private final ResourceService resourceService;
+    private final MinIoService minIoService;
 
     @GetMapping
     @Operation(summary = "Search for resources")
@@ -65,6 +71,31 @@ public class ResourceController {
         ResourceUploadResponse response = resourceService.upload(request);
 
         return ResponseDTO.success(response);
+    }
+
+    @PostMapping(value = "/test", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(summary = "Create a new resource")
+    ResponseDTO<String> createResourceTest(
+            @RequestPart("file") MultipartFile file
+    ) {
+        StorageUploadRequest request = new StorageUploadRequest();
+        request.setFile(file);
+        StorageUploadResponse response = minIoService.upload(request);
+
+        return ResponseDTO.success(response.getForeignId());
+    }
+
+    @GetMapping("/{resourceId}/test")
+    @Operation(summary = "Get a specific resource")
+    ResponseDTO<String> getOneResourceTest(
+            @PathVariable("resourceId") String resourceId
+    ) {
+        StorageReadRequest request = new StorageReadRequest();
+        request.setForeignId(resourceId);
+        StorageReadResponse response = minIoService.read(request);
+
+        return ResponseDTO.success(response.getResourceLink());
     }
 
     @DeleteMapping("/{resourceId}")
