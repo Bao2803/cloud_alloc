@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Job Status Notification</title>
+</head>
+<body>
+<h3>Dear User,</h3>
+<p>The following jobs have been processed:</p>
+<table border="1">
+    <thead>
+    <tr>
+        <th>Action</th>
+        <th>Resource Name</th>
+        <th>Location</th>
+        <th>Status</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr th:each="job : ${jobs}">
+        <td th:text="${job.operation.action}"></td>
+        <td th:text="${job.operation.resourceName}"></td>
+        <td th:text="${job.operation.location}"></td>
+        <td th:text="${job.status} ? 'Success' : 'Failed'"></td>
+    </tr>
+    </tbody>
+</table>
+<p>Best regards,</p>
+<p>Cloud Alloc</p>
+</body>
+</html>
