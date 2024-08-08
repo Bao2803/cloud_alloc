@@ -10,7 +10,7 @@ public enum Provider {
     GOOGLE,
     MICROSOFT,
     DROPBOX,
-    MINIO;
+    ;
 
     public static Provider getProvider(String provider) throws IllegalArgumentException {
         try {
