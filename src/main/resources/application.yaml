@@ -1,0 +1,94 @@
+spring:
+  application:
+    name: cloud_alloc
+    core:
+      min-size-default: 1024              # in bytes
+      fragmentation-cron: "0 0 * * * *"   # every day at midnight
+    noti:
+      user-email: phan43@purdue.edu       # email to notify when a job completed
+
+  task:
+    scheduling:
+      pool:
+        size: 5
+
+  servlet:
+    multipart:
+      max-file-size: -1                   # infinite (in MB)
+      max-request-size: -1                # infinite (in MB)
+      resolve-lazily: true
+
+  kafka:
+    bootstrap-servers: ${KAFKA}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      retries: 1
+      acks: all
+      properties:
+        enable.idempotence: true
+        max.in.flight.requests.per.connection: 5
+        partitioner.class: org.apache.kafka.clients.producer.internals.DefaultPartitioner
+        linger.ms: 100
+    consumer:
+      value-deserializer: org.apache.kafka.common.serialization.ByteArrayDeserializer
+      auto-offset-reset: earliest
+
+  datasource:
+    url: ${POSTGRES_URL}
+    username: ${POSTGRES_USERNAME}
+    password: ${POSTGRES_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_ID}
+            client-secret: ${GOOGLE_SECRET}
+            scope:
+              - https://www.googleapis.com/auth/drive   # drive access
+              - https://www.googleapis.com/auth/userinfo.email
+
+  mail:
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    default-encoding: UTF-8
+    properties:
+      mail:
+        mime:
+          charset: UTF
+        smtp:
+          ssl:
+            trust: "*"
+          writetimeout: 10000
+          connectiontimeout: 10000
+          timeout: 10000
+          auth: true
+          starttls:
+            enable: true
+            required: true
+
+minio:
+  host: ${MINIO_HOST}
+  port: ${MINIO_PORT}
+  access: ${MINIO_ROOT_USER}
+  password: ${MINIO_ROOT_PASSWORD}
+
+springdoc:
+  swagger-ui:
+    operationsSorter: method
+    try-it-out-enabled: true
+
+logging:
+  level:
+    org.springframework.security.web: DEBUG
+    org.springframework.security.oauth2: DEBUG
+    org.springframework.web.client.RestTemplate: DEBUG
+    org.hibernate.SQL: DEBUG
