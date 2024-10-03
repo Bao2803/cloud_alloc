@@ -1,9 +1,15 @@
 package westwood222.cloud_alloc.config;
 
 import io.minio.MinioClient;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.context.annotation.Bean;
+import westwood222.cloud_alloc.model.Account;
+import westwood222.cloud_alloc.model.Provider;
+import westwood222.cloud_alloc.repository.AccountRepository;
+
+import java.time.LocalDateTime;
 
 @ConfigurationProperties(prefix = "minio")
 public class MinIoConfig {
@@ -11,6 +17,9 @@ public class MinIoConfig {
     private final Integer PORT;
     private final String ACCESS;
     private final String PASSWORD;
+
+    @Autowired
+    private AccountRepository accountRepository;
 
     @ConstructorBinding
     public MinIoConfig(
@@ -27,6 +36,20 @@ public class MinIoConfig {
 
     @Bean
     public MinioClient minioClient() {
+        // Create a new MinIO account if needed
+        accountRepository
+                .findFirstByProvider(Provider.MINIO)
+                .orElseGet(
+                        () -> {
+                            Account minioAccount = Account.builder()
+                                    .provider(Provider.MINIO)
+                                    .username(ACCESS)
+                                    .refreshToken(PASSWORD)
+                                    .expirationDateTime(LocalDateTime.now().plusYears(100))
+                                    .build();
+                            return accountRepository.save(minioAccount);
+                        }
+                );
         return MinioClient.builder()
                 .endpoint(HOST, PORT, false)
                 .credentials(ACCESS, PASSWORD)

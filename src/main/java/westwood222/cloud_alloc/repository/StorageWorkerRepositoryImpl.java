@@ -27,6 +27,7 @@ import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
+import westwood222.cloud_alloc.service.storage.MinIoService;
 import westwood222.cloud_alloc.service.storage.worker.GoogleStorageWorker;
 import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
 
@@ -76,9 +77,9 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
      * Create a new instance of StorageService based on the input account.
      *
      * @param account contains information for OAuth2.0
-     * @return a nonnull StorageService that holds the accessToken to the input account
+     * @return StorageService that holds the accessToken to the input account
      */
-    private @Nonnull StorageWorker createStorageService(
+    private StorageWorker createStorageService(
             Account account,
             StorageMapper storageMapper
     ) throws IOException {
@@ -88,6 +89,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
                 OAuthProperty.ProviderSecret googleSecret = oAuthProperty.getProviderSecret(provider);
                 yield new GoogleStorageWorker(account, googleSecret, storageMapper);
             }
+            case MINIO -> new MinIoService(account, minioClient);
             case MICROSOFT, DROPBOX -> throw new RuntimeException("Not implemented");
         };
     }
