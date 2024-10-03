@@ -1,11 +1,13 @@
 package westwood222.cloud_alloc.dto.resource.search;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 import org.springframework.data.domain.Pageable;
 import westwood222.cloud_alloc.model.ResourceProperty;
 
-@Data
+@Value
+@Builder
 public class ResourceSearchRequest {
-    private Pageable pageable;
-    private ResourceProperty resourceProperty;
+    Pageable pageable;
+    ResourceProperty resourceProperty;
 }

@@ -1,9 +1,11 @@
 package westwood222.cloud_alloc.dto.storage.manager.upload;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 import org.springframework.web.multipart.MultipartFile;
 
-@Data
+@Value
+@Builder
 public class ManagerUploadRequest {
-    private MultipartFile[] files;
+    MultipartFile[] files;
 }

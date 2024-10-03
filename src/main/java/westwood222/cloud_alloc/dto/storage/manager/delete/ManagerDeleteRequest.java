@@ -1,12 +1,14 @@
 package westwood222.cloud_alloc.dto.storage.manager.delete;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.util.UUID;
 
-@Data
+@Value
+@Builder
 public class ManagerDeleteRequest {
-    private UUID accountId;
-    private String foreignId;
-    private boolean isHardDelete;
+    UUID accountId;
+    String foreignId;
+    boolean isHardDelete;
 }

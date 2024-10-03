@@ -23,7 +23,6 @@ import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.internal.AccountNotFound;
 import westwood222.cloud_alloc.exception.internal.InsufficientStorage;
-import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
@@ -43,7 +42,6 @@ import java.util.*;
 @RequiredArgsConstructor
 public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     private final MinioClient minioClient;
-    private final StorageMapper storageMapper;
     private final OAuthProperty oAuthProperty;
     private final AccountRepository accountRepository;
     private final OAuth2AuthorizedClientService authorizedClientService;
@@ -56,7 +54,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     @PostConstruct
     private void createStorageServices() {
         List<Account> accounts = accountRepository.findAll();
-        this.serviceMap = createStorageServiceMap(accounts, storageMapper);
+        this.serviceMap = createStorageServiceMap(accounts);
         this.serviceTreeSet = createStorageServiceTreeSet(serviceMap.values());
     }
 
@@ -80,14 +78,13 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
      * @return StorageService that holds the accessToken to the input account
      */
     private StorageWorker createStorageService(
-            Account account,
-            StorageMapper storageMapper
+            Account account
     ) throws IOException {
         Provider provider = account.getProvider();
         return switch (provider) {
             case GOOGLE -> {
                 OAuthProperty.ProviderSecret googleSecret = oAuthProperty.getProviderSecret(provider);
-                yield new GoogleStorageWorker(account, googleSecret, storageMapper);
+                yield new GoogleStorageWorker(account, googleSecret);
             }
             case MINIO -> new MinIoService(account, minioClient);
             case MICROSOFT, DROPBOX -> throw new RuntimeException("Not implemented");
@@ -95,8 +92,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     }
 
     private Map<UUID, StorageWorker> createStorageServiceMap(
-            List<Account> accounts,
-            StorageMapper storageMapper
+            List<Account> accounts
     ) {
         Map<UUID, StorageWorker> storageServiceMap = new HashMap<>(accounts.size());
 
@@ -104,7 +100,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
             try {
                 storageServiceMap.put(
                         account.getId(),
-                        createStorageService(account, storageMapper)
+                        createStorageService(account)
                 );
             } catch (IOException e) {
                 log.error("Can't instantiate driveService for account: {}", account, e);
@@ -236,7 +232,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
                 .build();
 
         // Initiate new driveService; update account's free space according to driveService's free space
-        StorageWorker service = createStorageService(account, storageMapper);
+        StorageWorker service = createStorageService(account);
         account.setAvailableSpace(service.getFreeSpace());
 
         // Keep track of the new driveService

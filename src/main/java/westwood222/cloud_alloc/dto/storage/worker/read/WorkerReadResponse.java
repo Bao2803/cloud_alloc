@@ -1,10 +1,12 @@
 package westwood222.cloud_alloc.dto.storage.worker.read;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
-@Data
+@Value
+@Builder
 public class WorkerReadResponse {
-    private String resourceLink;
-    private String resourceName;
-    private String resourceMimeType;
+    String resourceLink;
+    String resourceName;
+    String resourceMimeType;
 }

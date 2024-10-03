@@ -1,10 +1,12 @@
 package westwood222.cloud_alloc.dto.resource.delete;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.time.LocalDate;
 
-@Data
+@Value
+@Builder
 public class ResourceDeleteResponse {
-    private LocalDate deleteDate;
+    LocalDate deleteDate;
 }

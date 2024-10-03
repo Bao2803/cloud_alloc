@@ -1,18 +1,22 @@
 package westwood222.cloud_alloc.dto.resource.upload;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 import westwood222.cloud_alloc.model.Provider;
 
 import java.util.List;
+import java.util.UUID;
 
-@Data
+@Value
+@Builder
 public class ResourceUploadResponse {
-    private List<File> files;
+    List<File> files;
 
-    @Data
-    public static final class File {
-        private String username;
-        private Provider provider;
-        private String resourceId;
+    @Value
+    @Builder
+    public static class File {
+        UUID resourceId;
+        String username;
+        Provider provider;
     }
 }

@@ -1,15 +1,17 @@
 package westwood222.cloud_alloc.dto.storage.worker.upload;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 
-@Data
+@Value
+@Builder
 public class WorkerUploadResponse {
-    private String name;
-    private String username;
-    private String mimeType;
-    private String foreignId;
-    private Provider provider;
-    private Account account;
+    String name;
+    String username;
+    String mimeType;
+    String foreignId;
+    Provider provider;
+    Account account;
 }

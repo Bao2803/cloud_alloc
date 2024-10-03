@@ -48,9 +48,9 @@ public class MinIoService extends StorageWorker {
                     .expiry(1, TimeUnit.DAYS)
                     .extraQueryParams(reqParams)
                     .build());
-            WorkerUploadResponse response = new WorkerUploadResponse();
-            response.setForeignId(url);
-            return response;
+            return WorkerUploadResponse.builder()
+                    .foreignId(url)
+                    .build();
         } catch (
                 ServerException
                 | InsufficientDataException
@@ -68,8 +68,8 @@ public class MinIoService extends StorageWorker {
 
     @Override
     public WorkerReadResponse read(WorkerReadRequest request) {
-        WorkerReadResponse response = new WorkerReadResponse();
         try {
+
             String url = minioClient.getPresignedObjectUrl(
                     GetPresignedObjectUrlArgs.builder()
                             .method(Method.GET)
@@ -77,8 +77,9 @@ public class MinIoService extends StorageWorker {
                             .object(request.getForeignId())
                             .expiry(2, TimeUnit.HOURS)
                             .build());
-            response.setResourceLink(url);
-            return response;
+            return WorkerReadResponse.builder()
+                    .resourceLink(url)
+                    .build();
         } catch (
                 ServerException
                 | InsufficientDataException

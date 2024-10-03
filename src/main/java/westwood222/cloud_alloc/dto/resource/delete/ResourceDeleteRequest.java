@@ -1,11 +1,13 @@
 package westwood222.cloud_alloc.dto.resource.delete;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.util.UUID;
 
-@Data
+@Value
+@Builder
 public class ResourceDeleteRequest {
-    private UUID localId;
-    private boolean isHardDelete;
+    UUID localId;
+    boolean isHardDelete;
 }

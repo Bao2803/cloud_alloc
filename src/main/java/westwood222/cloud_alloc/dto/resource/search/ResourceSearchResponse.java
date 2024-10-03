@@ -1,14 +1,17 @@
 package westwood222.cloud_alloc.dto.resource.search;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 import westwood222.cloud_alloc.dto.resource.read.ResourceReadResponse;
 
 import java.util.List;
 
-@Data
+@Value
+@Builder
 public class ResourceSearchResponse {
-    int nextPage;
-    int nextSize;
-    int totalPage;
+    Integer nextPage;
+    Integer nextSize;
+    Integer totalPage;
+    Long totalElements;
     List<ResourceReadResponse> resources;
 }

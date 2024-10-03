@@ -1,10 +1,12 @@
 package westwood222.cloud_alloc.dto.resource.read;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.util.UUID;
 
-@Data
+@Value
+@Builder
 public class ResourceReadRequest {
-    private UUID resourceId;
+    UUID resourceId;
 }

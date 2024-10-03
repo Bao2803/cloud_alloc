@@ -17,9 +17,7 @@ import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadResponse;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.external.GoogleException;
-import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Account;
-import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
 
 import javax.annotation.Nonnull;
@@ -30,16 +28,13 @@ import java.time.LocalDate;
 
 public class GoogleStorageWorker extends StorageWorker {
     private final Drive driveService;
-    private final StorageMapper storageMapper;
     private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
 
     public GoogleStorageWorker(
             @Nonnull Account account,
-            @Nonnull OAuthProperty.ProviderSecret secret,
-            StorageMapper storageMapper
+            @Nonnull OAuthProperty.ProviderSecret secret
     ) {
         super(account);
-        this.storageMapper = storageMapper;
         this.driveService = createGoogleDriveSDK(account, secret);
         this.freeSpace = getFreeSpaceFromDrive(driveService);
     }
@@ -113,15 +108,13 @@ public class GoogleStorageWorker extends StorageWorker {
                     .execute();
             refreshFreeSpace();
 
-            ResourceProperty property = ResourceProperty.builder()
+            return WorkerUploadResponse.builder()
                     .name(result.getName())
                     .mimeType(result.getMimeType())
+                    .foreignId(result.getId())
+                    .account(account)
+                    .username(account.getUsername())
                     .build();
-            return storageMapper.toStorageUploadResponse(
-                    property,
-                    result.getId(),
-                    account
-            );
         } catch (IOException e) {
             throw new GoogleException(e);
         }
@@ -135,11 +128,11 @@ public class GoogleStorageWorker extends StorageWorker {
                     .setFields("webViewLink")
                     .execute();
 
-            ResourceProperty property = ResourceProperty.builder()
-                    .name(result.getName())
-                    .mimeType(result.getMimeType())
+            return WorkerReadResponse.builder()
+                    .resourceName(result.getName())
+                    .resourceMimeType(result.getMimeType())
+                    .resourceLink(result.getWebViewLink())
                     .build();
-            return storageMapper.toStorageReadResponse(property, result.getWebViewLink());
         } catch (IOException e) {
             throw new GoogleException(e);
         }

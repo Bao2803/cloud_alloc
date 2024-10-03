@@ -19,7 +19,6 @@ import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadRequest;
 import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadResponse;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
-import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.repository.StorageWorkerRepository;
 import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
 
@@ -29,7 +28,6 @@ import java.util.ArrayList;
 @Service
 @RequiredArgsConstructor
 public class StorageManagerImpl implements StorageManager {
-    private final StorageMapper storageMapper;
     private final StorageWorkerRepository serviceRepository;
     private final KafkaTemplate<String, JobCompleteEvent> kafkaTemplate;
 

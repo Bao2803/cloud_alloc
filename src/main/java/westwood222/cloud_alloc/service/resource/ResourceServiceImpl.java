@@ -3,6 +3,7 @@ package westwood222.cloud_alloc.service.resource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import westwood222.cloud_alloc.dto.resource.delete.ResourceDeleteRequest;
@@ -21,8 +22,6 @@ import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadResponse;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.internal.ResourceNotFound;
-import westwood222.cloud_alloc.mapper.ResourceMapper;
-import westwood222.cloud_alloc.mapper.StorageMapper;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.model.Resource;
 import westwood222.cloud_alloc.model.ResourceProperty;
@@ -41,10 +40,8 @@ import java.util.List;
 @Service
 @RequiredArgsConstructor
 public class ResourceServiceImpl implements ResourceService {
-    private final ResourceMapper resourceMapper;
     private final ResourceRepository resourceRepository;
 
-    private final StorageMapper storageMapper;
     private final StorageManager storageManager;
 
     private final StorageWorkerRepository workerRepository;     // temp for demo purpose; should call through manager
@@ -62,13 +59,33 @@ public class ResourceServiceImpl implements ResourceService {
         );
 
         // Calculate next page and transform data to DTO
+        Pageable nextPageable = page.nextOrLastPageable();
         int totalPage = page.getTotalPages();
-        int nextSize = page.getSize();
-        int nextPage = totalPage == 0 ? 0 : (request.getPageable().getPageNumber() + 1) % totalPage;
-        List<ResourceReadResponse> resources = page.getContent()
-                .stream().map(resourceMapper::resourceToResourceReadResponse).toList();
+        int nextSize = nextPageable.getPageSize();
+        int nextPage = nextPageable.getPageNumber();
+        long totalElements = page.getTotalElements();
 
-        return resourceMapper.toSearchResponse(nextPage, nextSize, totalPage, resources);
+        // Get all resources
+        List<ResourceReadResponse> resources = page.getContent()
+                .stream()
+                .map(
+                        resource -> ResourceReadResponse.builder()
+                                .resourceId(resource.getId())
+                                .resourceName(resource.getProperty().getName())
+                                .resourceMimeType(resource.getProperty().getMimeType())
+                                .provider(resource.getAccount().getProvider())
+                                .username(resource.getAccount().getUsername())
+                                .build()
+                )
+                .toList();
+
+        return ResourceSearchResponse.builder()
+                .nextPage(nextPage)
+                .nextSize(nextSize)
+                .totalPage(totalPage)
+                .totalElements(totalElements)
+                .resources(resources)
+                .build();
     }
 
     /**
@@ -77,12 +94,15 @@ public class ResourceServiceImpl implements ResourceService {
     @Override
     public ResourceUploadResponse upload(ResourceUploadRequest request) {
         // Upload to Cloud
-        ManagerUploadRequest storageRequest = storageMapper.toStorageUploadRequest(request.getFiles());
+        ManagerUploadRequest storageRequest = ManagerUploadRequest.builder()
+                .files(request.getFiles())
+                .build();
         ManagerUploadResponse storageResponse = storageManager.upload(storageRequest);
 
         // Save metadata to DB
-        ResourceUploadResponse response = new ResourceUploadResponse();
-        response.setFiles(new ArrayList<>());
+        ResourceUploadResponse response = ResourceUploadResponse.builder()
+                .files(new ArrayList<>(storageResponse.getFiles().size()))
+                .build();
         for (WorkerUploadResponse file : storageResponse.getFiles()) {
             ResourceProperty property = ResourceProperty.builder()
                     .name(file.getName())
@@ -94,7 +114,13 @@ public class ResourceServiceImpl implements ResourceService {
                     .property(property)
                     .build();
             resource = resourceRepository.save(resource);
-            response.getFiles().add(resourceMapper.toResourceUploadResponse(resource.getId(), file));
+            response.getFiles().add(
+                    ResourceUploadResponse.File.builder()
+                            .resourceId(resource.getId())
+                            .provider(resource.getAccount().getProvider())
+                            .username(resource.getAccount().getUsername())
+                            .build()
+            );
         }
 
         return response;
@@ -109,14 +135,17 @@ public class ResourceServiceImpl implements ResourceService {
         Resource resource = resourceRepository.findById(request.getResourceId())
                 .orElseThrow(() -> new ResourceNotFound(request.getResourceId()));
 
-        // Get resource download link from cloud storage
-        ManagerReadRequest storageRequest = storageMapper.toStorageReadRequest(
-                resource.getAccount().getId(),
-                resource.getForeignId()
-        );
-        ManagerReadResponse storageResponse = storageManager.read(storageRequest);
+        ManagerReadRequest managerReadRequest = ManagerReadRequest.builder()
+                .accountId(resource.getAccount().getId())
+                .foreignId(resource.getForeignId())
+                .build();
+        ManagerReadResponse storageResponse = storageManager.read(managerReadRequest);
 
-        return resourceMapper.toResourceReadResponse(resource, storageResponse.getResourceLink());
+        return ResourceReadResponse.builder()
+                .resourceName(storageResponse.getResourceName())
+                .resourceMimeType(storageResponse.getResourceMimeType())
+                .resourceLink(storageResponse.getResourceLink())
+                .build();
     }
 
     @Scheduled(cron = "${spring.application.core.fragmentation-cron}")
@@ -196,11 +225,11 @@ public class ResourceServiceImpl implements ResourceService {
                 .orElseThrow(() -> new ResourceNotFound(request.getLocalId()));
 
         // Delete resource from cloud storage
-        ManagerDeleteRequest storageRequest = storageMapper.toStorageDeleteRequest(
-                resource.getAccount().getId(),
-                resource.getForeignId(),
-                request.isHardDelete()
-        );
+        ManagerDeleteRequest storageRequest = ManagerDeleteRequest.builder()
+                .accountId(resource.getAccount().getId())
+                .foreignId(resource.getForeignId())
+                .isHardDelete(request.isHardDelete())
+                .build();
         ManagerDeleteResponse storageResponse = storageManager.delete(storageRequest);
 
         // Delete resource metadata
@@ -210,6 +239,8 @@ public class ResourceServiceImpl implements ResourceService {
             System.err.println("NOT IMPLEMENTED: Should be hard delete!");
         }
 
-        return resourceMapper.storageDeleteResponsetoResourceDeleteResponse(storageResponse);
+        return ResourceDeleteResponse.builder()
+                .deleteDate(storageResponse.getDeleteDate())
+                .build();
     }
 }

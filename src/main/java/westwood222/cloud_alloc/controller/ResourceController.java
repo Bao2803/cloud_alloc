@@ -19,7 +19,7 @@ import westwood222.cloud_alloc.dto.resource.search.ResourceSearchRequest;
 import westwood222.cloud_alloc.dto.resource.search.ResourceSearchResponse;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadRequest;
 import westwood222.cloud_alloc.dto.resource.upload.ResourceUploadResponse;
-import westwood222.cloud_alloc.mapper.ResourceMapper;
+import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.service.resource.ResourceService;
 
 import java.util.UUID;
@@ -28,7 +28,6 @@ import java.util.UUID;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/resource")
 public class ResourceController {
-    private final ResourceMapper resourceMapper;
     private final ResourceService resourceService;
 
     @GetMapping
@@ -38,9 +37,16 @@ public class ResourceController {
             @RequestParam(value = "type", defaultValue = "") String mimeType,
             @ParameterObject @PageableDefault(sort = "updatedAt", direction = Sort.Direction.DESC) Pageable pageable
     ) {
-        ResourceSearchRequest request = resourceMapper.toSearchRequest(pageable, name, mimeType);
-        ResourceSearchResponse response = resourceService.search(request);
+        ResourceProperty searchResourceProperty = ResourceProperty.builder()
+                .name(name)
+                .mimeType(mimeType)
+                .build();
+        ResourceSearchRequest request = ResourceSearchRequest.builder()
+                .pageable(pageable)
+                .resourceProperty(searchResourceProperty)
+                .build();
 
+        ResourceSearchResponse response = resourceService.search(request);
         return ResponseDTO.success(response);
     }
 
@@ -49,9 +55,11 @@ public class ResourceController {
     ResponseDTO<ResourceReadResponse> getOneResource(
             @PathVariable("resourceId") UUID resourceId
     ) {
-        ResourceReadRequest request = resourceMapper.toViewRequest(resourceId);
-        ResourceReadResponse response = resourceService.read(request);
+        ResourceReadRequest request = ResourceReadRequest.builder()
+                .resourceId(resourceId)
+                .build();
 
+        ResourceReadResponse response = resourceService.read(request);
         return ResponseDTO.success(response);
     }
 
@@ -61,9 +69,11 @@ public class ResourceController {
     ResponseDTO<ResourceUploadResponse> createResource(
             @RequestPart("files") MultipartFile[] files
     ) {
-        ResourceUploadRequest request = resourceMapper.toResourceUploadRequest(files);
-        ResourceUploadResponse response = resourceService.upload(request);
+        ResourceUploadRequest request = ResourceUploadRequest.builder()
+                .files(files)
+                .build();
 
+        ResourceUploadResponse response = resourceService.upload(request);
         return ResponseDTO.success(response);
     }
 
@@ -73,9 +83,12 @@ public class ResourceController {
             @PathVariable("resourceId") UUID resourceId,
             @RequestParam(value = "hardDelete", defaultValue = "false") boolean isHardDelete
     ) {
-        ResourceDeleteRequest request = resourceMapper.toResourceDeleteRequest(resourceId, isHardDelete);
-        ResourceDeleteResponse response = resourceService.delete(request);
+        ResourceDeleteRequest request = ResourceDeleteRequest.builder()
+                .localId(resourceId)
+                .isHardDelete(isHardDelete)
+                .build();
 
+        ResourceDeleteResponse response = resourceService.delete(request);
         return ResponseDTO.success(response);
     }
 }

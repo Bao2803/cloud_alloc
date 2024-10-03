@@ -1,11 +1,13 @@
 package westwood222.cloud_alloc.dto.storage.manager.read;
 
-import lombok.Data;
+import lombok.Builder;
+import lombok.Value;
 
 import java.util.UUID;
 
-@Data
+@Value
+@Builder
 public class ManagerReadRequest {
-    private UUID accountId;
-    private String foreignId;
+    UUID accountId;
+    String foreignId;
 }
