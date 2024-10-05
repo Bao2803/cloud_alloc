@@ -27,8 +27,8 @@ import westwood222.cloud_alloc.model.Account;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.oauth.OAuthProperty;
 import westwood222.cloud_alloc.service.storage.MinIoService;
-import westwood222.cloud_alloc.service.storage.worker.GoogleStorageWorker;
-import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
+import westwood222.cloud_alloc.service.storage.worker.CloudStorageService;
+import westwood222.cloud_alloc.service.storage.worker.GoogleDriveService;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
@@ -48,8 +48,8 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
 
     @Value("${spring.application.core.min-size-default}")
     private long MINIMUM_BYTE;
-    private Map<UUID, StorageWorker> serviceMap;
-    private TreeSet<StorageWorker> serviceTreeSet;
+    private Map<UUID, CloudStorageService> serviceMap;
+    private TreeSet<CloudStorageService> serviceTreeSet;
 
     @PostConstruct
     private void createStorageServices() {
@@ -64,7 +64,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     @PreDestroy
     private void destroy() {
         Account account;
-        for (StorageWorker service : serviceMap.values()) {
+        for (CloudStorageService service : serviceMap.values()) {
             account = service.getAccount();
             account.setAvailableSpace(service.getFreeSpace());
             accountRepository.save(account);
@@ -77,24 +77,24 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
      * @param account contains information for OAuth2.0
      * @return StorageService that holds the accessToken to the input account
      */
-    private StorageWorker createStorageService(
+    private CloudStorageService createStorageService(
             Account account
     ) throws IOException {
         Provider provider = account.getProvider();
         return switch (provider) {
             case GOOGLE -> {
                 OAuthProperty.ProviderSecret googleSecret = oAuthProperty.getProviderSecret(provider);
-                yield new GoogleStorageWorker(account, googleSecret);
+                yield new GoogleDriveService(account, googleSecret);
             }
             case MINIO -> new MinIoService(account, minioClient);
             case MICROSOFT, DROPBOX -> throw new RuntimeException("Not implemented");
         };
     }
 
-    private Map<UUID, StorageWorker> createStorageServiceMap(
+    private Map<UUID, CloudStorageService> createStorageServiceMap(
             List<Account> accounts
     ) {
-        Map<UUID, StorageWorker> storageServiceMap = new HashMap<>(accounts.size());
+        Map<UUID, CloudStorageService> storageServiceMap = new HashMap<>(accounts.size());
 
         for (Account account : accounts) {
             try {
@@ -110,19 +110,19 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
         return storageServiceMap;
     }
 
-    private TreeSet<StorageWorker> createStorageServiceTreeSet(
-            Collection<StorageWorker> services
+    private TreeSet<CloudStorageService> createStorageServiceTreeSet(
+            Collection<CloudStorageService> services
     ) {
-        TreeSet<StorageWorker> treeSet = new TreeSet<>(
-                Comparator.comparingLong(StorageWorker::getFreeSpace)
+        TreeSet<CloudStorageService> treeSet = new TreeSet<>(
+                Comparator.comparingLong(CloudStorageService::getFreeSpace)
         );
         treeSet.addAll(services);
         return treeSet;
     }
 
-    private StorageWorker createQueryObject(long spaceNeed) {
+    private CloudStorageService createQueryObject(long spaceNeed) {
         spaceNeed = spaceNeed <= 0 ? MINIMUM_BYTE : spaceNeed;
-        return new StorageWorker(new Account(), spaceNeed) {
+        return new CloudStorageService(new Account(), spaceNeed) {
             @Override
             public long getFreeSpace() {
                 return this.freeSpace;
@@ -146,10 +146,10 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     }
 
     @Nonnull
-    public StorageWorker getServiceBySpace(long spaceNeed) throws InsufficientStorage {
-        StorageWorker queryObject = createQueryObject(spaceNeed);
+    public CloudStorageService getServiceBySpace(long spaceNeed) throws InsufficientStorage {
+        CloudStorageService queryObject = createQueryObject(spaceNeed);
 
-        StorageWorker service = serviceTreeSet.higher(queryObject);
+        CloudStorageService service = serviceTreeSet.higher(queryObject);
         try {
             if (service == null || service.getFreeSpace() <= spaceNeed) {
                 throw new InsufficientStorage(spaceNeed);
@@ -165,8 +165,8 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
     }
 
     @Nonnull
-    public StorageWorker getServiceById(UUID id) throws AccountNotFound {
-        StorageWorker storageService = serviceMap.get(id);
+    public CloudStorageService getServiceById(UUID id) throws AccountNotFound {
+        CloudStorageService storageService = serviceMap.get(id);
         if (storageService == null) {
             throw new AccountNotFound(id);
         }
@@ -174,7 +174,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
         return storageService;
     }
 
-    public void addService(StorageWorker storageService) {
+    public void addService(CloudStorageService storageService) {
         serviceTreeSet.add(storageService);
         serviceMap.putIfAbsent(storageService.getAccount().getId(), storageService);
     }
@@ -232,7 +232,7 @@ public class StorageWorkerRepositoryImpl implements StorageWorkerRepository {
                 .build();
 
         // Initiate new driveService; update account's free space according to driveService's free space
-        StorageWorker service = createStorageService(account);
+        CloudStorageService service = createStorageService(account);
         account.setAvailableSpace(service.getFreeSpace());
 
         // Keep track of the new driveService

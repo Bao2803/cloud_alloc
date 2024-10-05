@@ -21,10 +21,10 @@ import westwood222.cloud_alloc.model.Account;
  */
 @AllArgsConstructor
 @RequiredArgsConstructor
-public abstract class StorageWorker implements Comparable<StorageWorker> {
+public abstract class CloudStorageService {
     @Getter
     @Nonnull
-    protected final Account account;    // the account that this StorageWorker is referencing
+    protected final Account account;    // the account that this CloudStorageService is referencing
 
     @Setter // temp for frag demo purpose; TODO: remove
     protected long freeSpace;           // the current free space in the cloud storage specified by account
@@ -57,20 +57,4 @@ public abstract class StorageWorker implements Comparable<StorageWorker> {
      * @throws ExternalException when something went wrong during reading the file
      */
     public abstract WorkerDeleteResponse delete(WorkerDeleteRequest request);
-
-    /**
-     * Default ordering for service, which is ordered by available space in ascending order.
-     * Note: this class has a natural ordering that is inconsistent with equals (i.e. a.compareTo(b) == 0 DOES NOT imply
-     * that a.equals(b) == true; 2 different storage can have similar free space).
-     *
-     * @param otherStorageService the object to be compared.
-     * @return a negative integer, zero, or a positive integer as this object is
-     * less than, equal to, or greater than the specified object.
-     */
-    @Override
-    public int compareTo(
-            @Nonnull final StorageWorker otherStorageService
-    ) {
-        return Long.compare(this.getFreeSpace(), otherStorageService.getFreeSpace());
-    }
 }

@@ -8,15 +8,16 @@ import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadResponse;
 import westwood222.cloud_alloc.exception.external.ExternalException;
 import westwood222.cloud_alloc.repository.StorageWorkerRepository;
+import westwood222.cloud_alloc.service.storage.worker.CloudStorageService;
 
 /**
- * This class acts as a proxy for the internal {@code StorageWorker}s by delegating the
- * uploading, deleting, and reading {@link westwood222.cloud_alloc.model.Resource} to {@code StorageWorker}.
+ * This class acts as a proxy for the internal {@code CloudStorageService}s by delegating the
+ * uploading, deleting, and reading {@link westwood222.cloud_alloc.model.Resource} to {@code CloudStorageService}.
  * <p>
  * Typically, it uses {@link StorageWorkerRepository} to obtain the necessary
- * {@code StorageWorker}.
+ * {@code CloudStorageService}.
  *
- * @see westwood222.cloud_alloc.service.storage.worker.StorageWorker
+ * @see CloudStorageService
  * @see StorageWorkerRepository
  */
 public interface StorageManager {

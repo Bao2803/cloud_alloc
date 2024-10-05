@@ -22,27 +22,21 @@ import westwood222.cloud_alloc.oauth.OAuthProperty;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
-import java.net.FileNameMap;
-import java.net.URLConnection;
 import java.time.LocalDate;
 
-public class GoogleStorageWorker extends StorageWorker {
-    private final Drive driveService;
-    private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
+public class GoogleDriveService extends CloudStorageService {
+    // Google removes trash items after 30 days: https://developers.google.com/drive/api/guides/delete
+    private static final int MAX_TRASH_DAY = 30;
 
-    public GoogleStorageWorker(
-            @Nonnull Account account,
-            @Nonnull OAuthProperty.ProviderSecret secret
-    ) {
+    private final Drive driveService;
+
+    public GoogleDriveService(@Nonnull Account account, @Nonnull OAuthProperty.ProviderSecret secret) {
         super(account);
         this.driveService = createGoogleDriveSDK(account, secret);
         this.freeSpace = getFreeSpaceFromDrive(driveService);
     }
 
-    private static Drive createGoogleDriveSDK(
-            Account account,
-            OAuthProperty.ProviderSecret secret
-    ) {
+    private static Drive createGoogleDriveSDK(Account account, OAuthProperty.ProviderSecret secret) {
         // Construct Google's credential; this class will handle refreshing token for us
         Credential credential = new Credential.Builder(BearerToken.authorizationHeaderAccessMethod())
                 .setTransport(GoogleConfig.HTTP_TRANSPORT)
@@ -95,14 +89,15 @@ public class GoogleStorageWorker extends StorageWorker {
 
     @Override
     public WorkerUploadResponse upload(WorkerUploadRequest request) {
-        String name = request.getFile().getOriginalFilename();
         try {
-            String mimeType = fileNameMap.getContentTypeFor(name);
-            InputStreamContent mediaContent = new InputStreamContent(mimeType, request.getFile().getInputStream());
+            InputStreamContent mediaContent = new InputStreamContent(
+                    request.getMimeType(),
+                    request.getFile().getInputStream()
+            );
             File result = driveService.files()
                     .create(
-                            new File().setName(name)
-                                    .setMimeType(mimeType),
+                            new File().setName(request.getFile().getOriginalFilename())
+                                    .setMimeType(request.getMimeType()),
                             mediaContent
                     )
                     .execute();
@@ -150,9 +145,7 @@ public class GoogleStorageWorker extends StorageWorker {
             temp.setTrashed(true);
             driveService.files().update(request.getForeignId(), temp).execute();
 
-            // Google removes trash items after 30 days: https://developers.google.com/drive/api/guides/delete
-            final int MAX_TRASH_TIME = 30;
-            return WorkerDeleteResponse.builder().deleteDate(LocalDate.now().plusDays(MAX_TRASH_TIME)).build();
+            return WorkerDeleteResponse.builder().deleteDate(LocalDate.now().plusDays(MAX_TRASH_DAY)).build();
         } catch (IOException e) {
             throw new GoogleException(e);
         }

@@ -18,22 +18,19 @@ import westwood222.cloud_alloc.dto.storage.manager.delete.ManagerDeleteRequest;
 import westwood222.cloud_alloc.dto.storage.manager.delete.ManagerDeleteResponse;
 import westwood222.cloud_alloc.dto.storage.manager.read.ManagerReadRequest;
 import westwood222.cloud_alloc.dto.storage.manager.read.ManagerReadResponse;
-import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadRequest;
-import westwood222.cloud_alloc.dto.storage.manager.upload.ManagerUploadResponse;
-import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.exception.internal.ResourceNotFound;
 import westwood222.cloud_alloc.model.Provider;
 import westwood222.cloud_alloc.model.Resource;
-import westwood222.cloud_alloc.model.ResourceProperty;
 import westwood222.cloud_alloc.repository.ResourceRepository;
 import westwood222.cloud_alloc.repository.StorageWorkerRepository;
 import westwood222.cloud_alloc.service.storage.manager.StorageManager;
-import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
+import westwood222.cloud_alloc.service.storage.worker.CloudStorageService;
 
+import java.net.FileNameMap;
+import java.net.URLConnection;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayDeque;
-import java.util.ArrayList;
 import java.util.List;
 
 @Slf4j
@@ -45,10 +42,8 @@ public class ResourceServiceImpl implements ResourceService {
     private final StorageManager storageManager;
 
     private final StorageWorkerRepository workerRepository;     // temp for demo purpose; should call through manager
+    private final FileNameMap fileNameMap = URLConnection.getFileNameMap();
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public ResourceSearchResponse search(ResourceSearchRequest request) {
         // Search
@@ -73,8 +68,6 @@ public class ResourceServiceImpl implements ResourceService {
                                 .resourceId(resource.getId())
                                 .resourceName(resource.getProperty().getName())
                                 .resourceMimeType(resource.getProperty().getMimeType())
-                                .provider(resource.getAccount().getProvider())
-                                .username(resource.getAccount().getUsername())
                                 .build()
                 )
                 .toList();
@@ -88,47 +81,11 @@ public class ResourceServiceImpl implements ResourceService {
                 .build();
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public ResourceUploadResponse upload(ResourceUploadRequest request) {
-        // Upload to Cloud
-        ManagerUploadRequest storageRequest = ManagerUploadRequest.builder()
-                .files(request.getFiles())
-                .build();
-        ManagerUploadResponse storageResponse = storageManager.upload(storageRequest);
-
-        // Save metadata to DB
-        ResourceUploadResponse response = ResourceUploadResponse.builder()
-                .files(new ArrayList<>(storageResponse.getFiles().size()))
-                .build();
-        for (WorkerUploadResponse file : storageResponse.getFiles()) {
-            ResourceProperty property = ResourceProperty.builder()
-                    .name(file.getName())
-                    .mimeType(file.getMimeType())
-                    .build();
-            Resource resource = Resource.builder()
-                    .account(file.getAccount())
-                    .foreignId(file.getForeignId())
-                    .property(property)
-                    .build();
-            resource = resourceRepository.save(resource);
-            response.getFiles().add(
-                    ResourceUploadResponse.File.builder()
-                            .resourceId(resource.getId())
-                            .provider(resource.getAccount().getProvider())
-                            .username(resource.getAccount().getUsername())
-                            .build()
-            );
-        }
-
-        return response;
+        return null;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public ResourceReadResponse read(ResourceReadRequest request) {
         // Get resource metadata
@@ -161,7 +118,7 @@ public class ResourceServiceImpl implements ResourceService {
         // If an InsufficientStorage is thrown,
         // try to upload as much file as possible from smallest to largest
         Resource curr;
-        StorageWorker worker = null;
+        CloudStorageService worker = null;
         boolean isFront = false;
         while (!resources.isEmpty()) {
             // Obtain a resource alternatively between the largest file and smallest file
@@ -215,9 +172,6 @@ public class ResourceServiceImpl implements ResourceService {
         }
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public ResourceDeleteResponse delete(ResourceDeleteRequest request) {
         // Get resource metadata

@@ -12,7 +12,7 @@ import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadResponse;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.model.Account;
-import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
+import westwood222.cloud_alloc.service.storage.worker.CloudStorageService;
 
 import java.io.IOException;
 import java.security.InvalidKeyException;
@@ -22,7 +22,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 
-public class MinIoService extends StorageWorker {
+public class MinIoService extends CloudStorageService {
     private final MinioClient minioClient;
 
     public MinIoService(@Nonnull Account account, MinioClient minioClient) {

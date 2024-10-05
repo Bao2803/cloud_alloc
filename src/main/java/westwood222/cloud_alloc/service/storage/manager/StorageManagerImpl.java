@@ -20,7 +20,7 @@ import westwood222.cloud_alloc.dto.storage.worker.read.WorkerReadResponse;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadRequest;
 import westwood222.cloud_alloc.dto.storage.worker.upload.WorkerUploadResponse;
 import westwood222.cloud_alloc.repository.StorageWorkerRepository;
-import westwood222.cloud_alloc.service.storage.worker.StorageWorker;
+import westwood222.cloud_alloc.service.storage.worker.CloudStorageService;
 
 import java.util.ArrayList;
 
@@ -40,7 +40,7 @@ public class StorageManagerImpl implements StorageManager {
         ManagerUploadResponse response = new ManagerUploadResponse();
         response.setFiles(new ArrayList<>());
         for (MultipartFile file : files) {
-            StorageWorker storageService = serviceRepository.getServiceBySpace(file.getSize());
+            CloudStorageService storageService = serviceRepository.getServiceBySpace(file.getSize());
             try {
                 WorkerUploadRequest workerRequest = WorkerUploadRequest.builder().file(file).build();
                 WorkerUploadResponse workerResponse = storageService.upload(workerRequest);
@@ -56,7 +56,7 @@ public class StorageManagerImpl implements StorageManager {
 
     @Override
     public ManagerReadResponse read(ManagerReadRequest request) {
-        StorageWorker service = serviceRepository.getServiceById(request.getAccountId());
+        CloudStorageService service = serviceRepository.getServiceById(request.getAccountId());
         try {
             WorkerReadRequest workerRequest = WorkerReadRequest.builder()
                     .foreignId(request.getForeignId())
@@ -74,7 +74,7 @@ public class StorageManagerImpl implements StorageManager {
 
     @Override
     public ManagerDeleteResponse delete(ManagerDeleteRequest request) {
-        StorageWorker service = serviceRepository.getServiceById(request.getAccountId());
+        CloudStorageService service = serviceRepository.getServiceById(request.getAccountId());
         try {
             WorkerDeleteRequest workerRequest = WorkerDeleteRequest.builder()
                     .foreignId(request.getForeignId())

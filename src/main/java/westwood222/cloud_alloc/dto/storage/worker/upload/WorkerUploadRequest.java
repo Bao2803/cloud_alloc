@@ -7,5 +7,6 @@ import org.springframework.web.multipart.MultipartFile;
 @Data
 @Builder
 public class WorkerUploadRequest {
+    private String mimeType;
     private MultipartFile file;
 }
